@@ -19,7 +19,7 @@ export const steps: Step[] = [
     text: 'In a stack bond, every brick is placed directly above the one below it. The vertical joints line up perfectly. This looks clean and modern, but provides little structural strength — the continuous vertical joints are a weak point.',
     scene: {
       rowOffset: 0,
-      rotation: [0.3, 0.4, 0],
+      rotation: [0, 0.0, 0],
       groupY: 0,
     },
   },
@@ -28,8 +28,8 @@ export const steps: Step[] = [
     text: 'The most common pattern in modern construction. Each row is offset by half a brick length, staggering the vertical joints. This interlocking action distributes loads across multiple bricks and gives the wall much greater strength.',
     scene: {
       rowOffset: 0.5,
-      rotation: [0.3, 0.5, 0],
-      groupY: 0.2,
+      rotation: [0, 0.3, 0],
+      groupY: 0,
     },
   },
   {
@@ -37,8 +37,8 @@ export const steps: Step[] = [
     text: 'An elegant pattern alternating headers (bricks laid end-on) and stretchers (bricks laid lengthwise) in each row. Every header is centred over a stretcher below. Originally used in load-bearing walls, it is prized today for its decorative richness.',
     scene: {
       rowOffset: 0.25,
-      rotation: [0.3, 0.65, 0],
-      groupY: 0.4,
+      rotation: [0, 0.6, 0],
+      groupY: 0,
     },
   },
 ]
