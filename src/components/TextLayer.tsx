@@ -1,55 +1,89 @@
-import { useState, useEffect, useRef } from 'react'
-import { Step } from '../steps'
+import { ReactNode, useState, useEffect, useRef } from 'react'
+import { Moment } from '../steps'
 import styles from '../styles/textLayer.module.css'
 
 interface Props {
-  steps: Step[]
-  currentStep: number
+  moments: Moment[]
+  currentMoment: number
 }
 
-type Position = 'center' | 'off-left' | 'off-right'
+type AnimClass = 'enterFromRight' | 'enterFromLeft' | 'exitToLeft' | 'exitToRight' | null
 
 interface Panel {
-  step: Step
-  position: Position
-  exiting: boolean
+  stepText: string
+  substepText: string | null
+  substepKey: number
+  animClass: AnimClass
   key: number
 }
 
-export default function TextLayer({ steps, currentStep }: Props) {
+// Returns the index of the step moment that begins the current slide
+function getSlideStart(momentIndex: number, moments: Moment[]): number {
+  for (let i = momentIndex; i >= 0; i--) {
+    if (!moments[i].isSubstep) return i
+  }
+  return 0
+}
+
+// Parses *text* into <em> elements
+function renderText(text: string): ReactNode[] {
+  return text.split(/\*([^*]+)\*/g).map((part, i) =>
+    i % 2 === 1 ? <em key={i}>{part}</em> : part
+  )
+}
+
+export default function TextLayer({ moments, currentMoment }: Props) {
+  const panelKeyCounter = useRef(1)
+  const substepKeyCounter = useRef(1)
+
   const [panels, setPanels] = useState<Panel[]>([
-    { step: steps[0], position: 'center', exiting: false, key: 0 },
+    { stepText: moments[0].text, substepText: null, substepKey: 0, animClass: null, key: 0 },
   ])
-  const prevStep = useRef(currentStep)
+
+  const prevMoment = useRef(currentMoment)
 
   useEffect(() => {
-    if (currentStep === prevStep.current) return
+    if (currentMoment === prevMoment.current) return
 
-    const goingForward = currentStep > prevStep.current
-    const exitTo: Position  = goingForward ? 'off-left'  : 'off-right'
-    const enterFrom: Position = goingForward ? 'off-right' : 'off-left'
-    const keyVal = currentStep
+    const goingForward = currentMoment > prevMoment.current
+    const prevSlideStart = getSlideStart(prevMoment.current, moments)
+    const currSlideStart = getSlideStart(currentMoment, moments)
 
-    setPanels((prev) => {
-      const updated = prev.map((p) =>
-        p.position === 'center' ? { ...p, position: exitTo, exiting: true } : p,
-      )
-      return [...updated, { step: steps[currentStep], position: enterFrom, exiting: false, key: keyVal }]
-    })
+    if (currSlideStart !== prevSlideStart) {
+      // Crossing a slide boundary — full slide transition
+      const exitAnim: AnimClass = goingForward ? 'exitToLeft' : 'exitToRight'
+      const enterAnim: AnimClass = goingForward ? 'enterFromRight' : 'enterFromLeft'
+      const newSubstepText = moments[currentMoment].isSubstep ? moments[currentMoment].text : null
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setPanels((prev) =>
-          prev.map((p) => (p.key === keyVal ? { ...p, position: 'center' } : p)),
+      setPanels((prev) => {
+        const updated = prev.map((p) =>
+          p.animClass?.startsWith('exit') ? p : { ...p, animClass: exitAnim }
         )
+        return [...updated, {
+          stepText: moments[currSlideStart].text,
+          substepText: newSubstepText,
+          substepKey: newSubstepText ? substepKeyCounter.current++ : 0,
+          animClass: enterAnim,
+          key: panelKeyCounter.current++,
+        }]
       })
-    })
+    } else {
+      // Within the same slide — update substep text without sliding
+      const newSubstepText = moments[currentMoment].isSubstep ? moments[currentMoment].text : null
+      setPanels((prev) => prev.map((p) =>
+        p.animClass?.startsWith('exit') ? p : {
+          ...p,
+          substepText: newSubstepText,
+          substepKey: newSubstepText ? substepKeyCounter.current++ : p.substepKey,
+        }
+      ))
+    }
 
-    prevStep.current = currentStep
-  }, [currentStep, steps])
+    prevMoment.current = currentMoment
+  }, [currentMoment, moments])
 
-  const handleTransitionEnd = (key: number, exiting: boolean) => {
-    if (exiting) {
+  const handleAnimationEnd = (key: number, animClass: AnimClass) => {
+    if (animClass?.startsWith('exit')) {
       setPanels((prev) => prev.filter((p) => p.key !== key))
     }
   }
@@ -59,11 +93,15 @@ export default function TextLayer({ steps, currentStep }: Props) {
       {panels.map((panel) => (
         <div
           key={panel.key}
-          className={`${styles.panel} ${styles[panel.position]}`}
-          onTransitionEnd={() => handleTransitionEnd(panel.key, panel.exiting)}
+          className={`${styles.panel}${panel.animClass ? ` ${styles[panel.animClass]}` : ''}`}
+          onAnimationEnd={() => handleAnimationEnd(panel.key, panel.animClass)}
         >
-          <h2 className={styles.title}>{panel.step.title}</h2>
-          <p className={styles.text}>{panel.step.text}</p>
+          <p className={styles.text}>{renderText(panel.stepText)}</p>
+          {panel.substepText && (
+            <p key={panel.substepKey} className={`${styles.text} ${styles.substepText}`}>
+              {renderText(panel.substepText)}
+            </p>
+          )}
         </div>
       ))}
     </>

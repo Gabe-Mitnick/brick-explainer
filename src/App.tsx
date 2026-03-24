@@ -3,7 +3,7 @@ import Scene from './components/Scene'
 import TextLayer from './components/TextLayer'
 import Controls from './components/Controls'
 import DebugMenu from './components/DebugMenu'
-import { steps } from './steps'
+import { moments } from './steps'
 import styles from './styles/app.module.css'
 
 export interface CameraConfig {
@@ -13,12 +13,15 @@ export interface CameraConfig {
 
 const DEFAULT_CAMERA: CameraConfig = { fov: 0, zoom: 50 }
 
+// Placeholder scene config until Phase 2 rewires the scene
+const DEFAULT_SCENE = { rowOffset: 0.5, rotation: [0, 0.3, 0] as [number, number, number], groupY: 0 }
+
 export default function App() {
-  const [currentStep, setCurrentStep] = useState(0)
+  const [currentMoment, setCurrentMoment] = useState(0)
   const [cameraConfig, setCameraConfig] = useState<CameraConfig>(DEFAULT_CAMERA)
 
-  const goNext = useCallback(() => setCurrentStep((s) => Math.min(s + 1, steps.length - 1)), [])
-  const goPrev = useCallback(() => setCurrentStep((s) => Math.max(s - 1, 0)), [])
+  const goNext = useCallback(() => setCurrentMoment((s) => Math.min(s + 1, moments.length - 1)), [])
+  const goPrev = useCallback(() => setCurrentMoment((s) => Math.max(s - 1, 0)), [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -32,15 +35,15 @@ export default function App() {
   return (
     <div className={styles.container}>
       <div className={styles.canvasLayer}>
-        <Scene targetConfig={steps[currentStep].scene} cameraConfig={cameraConfig} />
+        <Scene targetConfig={DEFAULT_SCENE} cameraConfig={cameraConfig} />
       </div>
       <div className={styles.textLayer}>
-        <TextLayer steps={steps} currentStep={currentStep} />
+        <TextLayer moments={moments} currentMoment={currentMoment} />
       </div>
       <div className={styles.controlsLayer}>
         <Controls
-          currentStep={currentStep}
-          totalSteps={steps.length}
+          currentStep={currentMoment}
+          totalSteps={moments.length}
           onPrev={goPrev}
           onNext={goNext}
         />
