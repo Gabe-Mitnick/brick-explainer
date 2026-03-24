@@ -15,8 +15,8 @@ export interface Moment {
 }
 
 const S1: SceneState = { bondPattern: 'stretcher', numWythes: 1, rows: 5, cols: 6, wytheSeparation: 0 }
-const S2: SceneState = { bondPattern: 'stretcher', numWythes: 2, rows: 5, cols: 6, wytheSeparation: 1.1 }
-const S2_CLOSE: SceneState = { ...S2, wytheSeparation: 0 }
+const S2: SceneState = { bondPattern: 'stretcher', numWythes: 2, rows: 5, cols: 6, wytheSeparation: 300 }
+const S2_CLOSE: SceneState = { ...S2, wytheSeparation: 112.5 } // BD + MORTAR — wythes touching
 const AMERICAN: SceneState = { bondPattern: 'american', numWythes: 2, rows: 7, cols: 6, wytheSeparation: 0 }
 const ENGLISH: SceneState = { bondPattern: 'english', numWythes: 2, rows: 6, cols: 6, wytheSeparation: 0 }
 const ENGLISH_CROSS: SceneState = { bondPattern: 'englishCross', numWythes: 2, rows: 6, cols: 6, wytheSeparation: 0 }

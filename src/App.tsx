@@ -11,7 +11,7 @@ export interface CameraConfig {
   zoom: number  // orthographic zoom level
 }
 
-const DEFAULT_CAMERA: CameraConfig = { fov: 0, zoom: 50 }
+const DEFAULT_CAMERA: CameraConfig = { fov: 0, zoom: 0.5 }
 
 
 export default function App() {

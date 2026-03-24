@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { SceneState } from '../steps'
@@ -7,15 +7,20 @@ interface Props {
   targetConfig: SceneState
 }
 
-// Standard brick proportions (normalised)
-const BW = 2.25  // width (stretcher face)
-const BH = 0.75  // height
-const BD = 1.0   // depth (header face)
-const MORTAR = 0.1
+// Standard UK brick dimensions in mm. Key property: BD + MORTAR = (BW + MORTAR) / 2,
+// so 2 headers + 1 mortar joint = 1 stretcher + 1 mortar joint.
+const BW = 215    // mm — stretcher length
+const BH = 65     // mm — height
+const BD = 102.5  // mm — header face width
+const MORTAR = 10 // mm — joint thickness
+
+// Z offset for stretcher wythes: includes mortar between wythes so front faces
+// of stretchers align with front face of headers (both at z = ±BW/2 = ±107.5mm).
+const WYTHE_Z = (BD + MORTAR) / 2  // 56.25mm
 
 const LERP = 0.05
 const MAX_BRICKS = 200
-const STASH_POS = new THREE.Vector3(0, -50, 0)
+const STASH_POS = new THREE.Vector3(0, -5000, 0)
 
 export interface BrickDef {
   x: number
@@ -38,8 +43,22 @@ function stretcherX(col: number, offset: number): number {
 }
 
 function headerX(col: number, offset: number): number {
-  // headers are BD wide on the face
+  // BD + MORTAR = (BW + MORTAR) / 2 exactly, so header joints align with
+  // stretcher centers and mortar-joint centers in adjacent courses
   return col * (BD + MORTAR) + offset
+}
+
+function addStretcherCourse(defs: BrickDef[], cols: number, y: number, offset: number): void {
+  for (let col = 0; col < cols; col++) {
+    defs.push({ x: stretcherX(col, offset), y, z: -WYTHE_Z, rotY: 0 })
+    defs.push({ x: stretcherX(col, offset), y, z:  WYTHE_Z, rotY: 0 })
+  }
+}
+
+function addHeaderCourse(defs: BrickDef[], cols: number, y: number): void {
+  for (let col = 0; col < cols * 2; col++) {
+    defs.push({ x: headerX(col, 0), y, z: 0, rotY: HEADER_ROT_Y })
+  }
 }
 
 function stretcherBond(rows: number, cols: number): BrickDef[] {
@@ -64,21 +83,11 @@ function americanBond(rows: number, cols: number): BrickDef[] {
   const defs: BrickDef[] = []
   const CYCLE = 7 // 6 stretcher + 1 header
   for (let row = 0; row < rows; row++) {
-    const posInCycle = row % CYCLE
     const y = rowY(row)
-    if (posInCycle === 0) {
-      // header course — headers span both wythes
-      const headerCount = Math.floor(cols * (BW + MORTAR) / (BD + MORTAR))
-      for (let col = 0; col < headerCount; col++) {
-        defs.push({ x: headerX(col, 0), y, z: 0, rotY: HEADER_ROT_Y })
-      }
+    if (row % CYCLE === 0) {
+      addHeaderCourse(defs, cols, y)
     } else {
-      // stretcher course — 2 wythes
-      const offset = (row % 2) * (BW + MORTAR) / 2
-      for (let col = 0; col < cols; col++) {
-        defs.push({ x: stretcherX(col, offset), y, z: -BD / 2, rotY: 0 })
-        defs.push({ x: stretcherX(col, offset), y, z:  BD / 2, rotY: 0 })
-      }
+      addStretcherCourse(defs, cols, y, (row % 2) * (BW + MORTAR) / 2)
     }
   }
   return defs
@@ -90,18 +99,9 @@ function englishBond(rows: number, cols: number): BrickDef[] {
   for (let row = 0; row < rows; row++) {
     const y = rowY(row)
     if (row % 2 === 0) {
-      // stretcher course
-      const offset = 0
-      for (let col = 0; col < cols; col++) {
-        defs.push({ x: stretcherX(col, offset), y, z: -BD / 2, rotY: 0 })
-        defs.push({ x: stretcherX(col, offset), y, z:  BD / 2, rotY: 0 })
-      }
+      addStretcherCourse(defs, cols, y, 0)
     } else {
-      // header course
-      const headerCount = Math.floor(cols * (BW + MORTAR) / (BD + MORTAR))
-      for (let col = 0; col < headerCount; col++) {
-        defs.push({ x: headerX(col, 0), y, z: 0, rotY: HEADER_ROT_Y })
-      }
+      addHeaderCourse(defs, cols, y)
     }
   }
   return defs
@@ -114,19 +114,10 @@ function englishCrossBond(rows: number, cols: number): BrickDef[] {
   for (let row = 0; row < rows; row++) {
     const y = rowY(row)
     if (row % 2 === 0) {
-      // stretcher course — offset every other one
-      const offset = (stretcherCourseIdx % 2) * (BW + MORTAR) / 2
-      for (let col = 0; col < cols; col++) {
-        defs.push({ x: stretcherX(col, offset), y, z: -BD / 2, rotY: 0 })
-        defs.push({ x: stretcherX(col, offset), y, z:  BD / 2, rotY: 0 })
-      }
+      addStretcherCourse(defs, cols, y, (stretcherCourseIdx % 2) * (BW + MORTAR) / 2)
       stretcherCourseIdx++
     } else {
-      // header course
-      const headerCount = Math.floor(cols * (BW + MORTAR) / (BD + MORTAR))
-      for (let col = 0; col < headerCount; col++) {
-        defs.push({ x: headerX(col, 0), y, z: 0, rotY: HEADER_ROT_Y })
-      }
+      addHeaderCourse(defs, cols, y)
     }
   }
   return defs
@@ -144,8 +135,8 @@ function flemishBond(rows: number, cols: number): BrickDef[] {
     let x = offset - unitW
     while (x < totalW + unitW) {
       // stretcher
-      defs.push({ x, y, z: -BD / 2, rotY: 0 })
-      defs.push({ x, y, z:  BD / 2, rotY: 0 })
+      defs.push({ x, y, z: -WYTHE_Z, rotY: 0 })
+      defs.push({ x, y, z:  WYTHE_Z, rotY: 0 })
       // header
       const hx = x + (BW + MORTAR) / 2 + (BD + MORTAR) / 2
       defs.push({ x: hx, y, z: 0, rotY: HEADER_ROT_Y })
@@ -166,12 +157,12 @@ function monkBond(rows: number, cols: number): BrickDef[] {
     let x = offset - unitW
     while (x < totalW + unitW) {
       // stretcher 1
-      defs.push({ x, y, z: -BD / 2, rotY: 0 })
-      defs.push({ x, y, z:  BD / 2, rotY: 0 })
+      defs.push({ x, y, z: -WYTHE_Z, rotY: 0 })
+      defs.push({ x, y, z:  WYTHE_Z, rotY: 0 })
       // stretcher 2
       const x2 = x + BW + MORTAR
-      defs.push({ x: x2, y, z: -BD / 2, rotY: 0 })
-      defs.push({ x: x2, y, z:  BD / 2, rotY: 0 })
+      defs.push({ x: x2, y, z: -WYTHE_Z, rotY: 0 })
+      defs.push({ x: x2, y, z:  WYTHE_Z, rotY: 0 })
       // header
       const hx = x2 + (BW + MORTAR) / 2 + (BD + MORTAR) / 2
       defs.push({ x: hx, y, z: 0, rotY: HEADER_ROT_Y })
@@ -198,11 +189,15 @@ export function getBrickDefs(scene: SceneState): BrickDef[] {
     }
   }
 
-  // Centre the wall
-  const xs = defs.map(d => d.x)
-  const ys = defs.map(d => d.y)
-  const cx = (Math.min(...xs) + Math.max(...xs)) / 2
-  const cy = (Math.min(...ys) + Math.max(...ys)) / 2
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+  for (const d of defs) {
+    if (d.x < minX) minX = d.x
+    if (d.x > maxX) maxX = d.x
+    if (d.y < minY) minY = d.y
+    if (d.y > maxY) maxY = d.y
+  }
+  const cx = (minX + maxX) / 2
+  const cy = (minY + maxY) / 2
   return defs.map(d => ({ ...d, x: d.x - cx, y: d.y - cy }))
 }
 
@@ -214,17 +209,15 @@ export default function BrickModel({ targetConfig }: Props) {
   const groupRef = useRef<THREE.Group>(null)
   const geo = useRef(new THREE.BoxGeometry(BW, BH, BD))
   const mat = useRef(makeBrickMaterial())
+  const defs = useMemo(() => getBrickDefs(targetConfig), [targetConfig])
 
   const meshRefs = useRef<(THREE.Mesh | null)[]>(Array(MAX_BRICKS).fill(null))
-  // Current lerped positions for each slot
   const lerpedPos = useRef<THREE.Vector3[]>(
     Array.from({ length: MAX_BRICKS }, () => STASH_POS.clone())
   )
   const lerpedRotY = useRef<number[]>(Array(MAX_BRICKS).fill(0))
 
   useFrame(() => {
-    const defs = getBrickDefs(targetConfig)
-
     for (let i = 0; i < MAX_BRICKS; i++) {
       const mesh = meshRefs.current[i]
       if (!mesh) continue

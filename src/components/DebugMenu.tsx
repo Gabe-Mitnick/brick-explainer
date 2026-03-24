@@ -67,7 +67,7 @@ export default function DebugMenu({ config, onChange }: Props) {
           <SliderRow
             label="Zoom"
             value={config.zoom}
-            min={10} max={150} step={1} current={config.zoom}
+            min={0.1} max={5} step={0.05} current={config.zoom}
             onSlide={(zoom) => onChange({ ...config, zoom })}
           />
         </div>

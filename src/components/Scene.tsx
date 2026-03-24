@@ -4,8 +4,8 @@ import { SceneState } from '../steps'
 import { CameraConfig } from '../App'
 import BrickModel from './BrickModel'
 
-const CAMERA_BASE_POSITION: [number, number, number] = [-5, 5, 10]
-const CAMERA_BASE_DIST = Math.sqrt(150) // ≈ 12.25
+const CAMERA_BASE_POSITION: [number, number, number] = [-500, 500, 1000] // mm
+const CAMERA_BASE_DIST = Math.sqrt(CAMERA_BASE_POSITION.reduce((s, v) => s + v * v, 0))
 const CAMERA_DIR: [number, number, number] = CAMERA_BASE_POSITION.map(
   (v) => v / CAMERA_BASE_DIST
 ) as [number, number, number]
@@ -33,8 +33,8 @@ export default function Scene({ targetConfig, cameraConfig }: Props) {
     <Canvas style={{ background: 'transparent' }}>
       <DynamicCamera config={cameraConfig} />
       <ambientLight intensity={0.4} />
-      <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow />
-      <directionalLight position={[-3, -2, -4]} intensity={0.3} color="#7090c0" />
+      <directionalLight position={[500, 1000, 500]} intensity={1.2} castShadow />
+      <directionalLight position={[-300, -200, -400]} intensity={0.3} color="#7090c0" />
       <BrickModel targetConfig={targetConfig} />
     </Canvas>
   )
