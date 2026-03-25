@@ -6,6 +6,11 @@ export interface SceneState {
   rows: number
   cols: number
   wytheSeparation: number
+  fallProgress: number           // 0 = bricks above screen, 1 = in final position
+  brickOpacity: number           // 0–1, global brick transparency
+  highlightedCourses: number[]   // rows lit with highlight material (static)
+  highlightWaveActive: boolean   // auto-sequence course highlights on entry
+  highlightColWaveActive: boolean // auto-sequence column highlights on entry
 }
 
 export interface Moment {
@@ -14,23 +19,38 @@ export interface Moment {
   isSubstep: boolean
 }
 
-const S1: SceneState = { bondPattern: 'stretcher', numWythes: 1, rows: 5, cols: 6, wytheSeparation: 0 }
-const S2: SceneState = { bondPattern: 'stretcher', numWythes: 2, rows: 5, cols: 6, wytheSeparation: 300 }
+// Default animation fields — spread into every SceneState constant
+const BASE = {
+  fallProgress: 1,
+  brickOpacity: 1,
+  highlightedCourses: [] as number[],
+  highlightWaveActive: false,
+  highlightColWaveActive: false,
+}
+
+const S1: SceneState = { ...BASE, bondPattern: 'stretcher', numWythes: 1, rows: 5, cols: 6, wytheSeparation: 0 }
+const S2: SceneState = { ...BASE, bondPattern: 'stretcher', numWythes: 2, rows: 5, cols: 6, wytheSeparation: 300 }
 const S2_CLOSE: SceneState = { ...S2, wytheSeparation: 112.5 } // BD + MORTAR — wythes touching
-const AMERICAN: SceneState = { bondPattern: 'american', numWythes: 2, rows: 7, cols: 6, wytheSeparation: 0 }
-const ENGLISH: SceneState = { bondPattern: 'english', numWythes: 2, rows: 6, cols: 6, wytheSeparation: 0 }
-const ENGLISH_CROSS: SceneState = { bondPattern: 'englishCross', numWythes: 2, rows: 6, cols: 6, wytheSeparation: 0 }
-const FLEMISH: SceneState = { bondPattern: 'flemish', numWythes: 2, rows: 6, cols: 6, wytheSeparation: 0 }
-const MONK: SceneState = { bondPattern: 'monk', numWythes: 2, rows: 6, cols: 8, wytheSeparation: 0 }
+const AMERICAN: SceneState = { ...BASE, bondPattern: 'american', numWythes: 2, rows: 7, cols: 6, wytheSeparation: 0 }
+const ENGLISH: SceneState = { ...BASE, bondPattern: 'english', numWythes: 2, rows: 6, cols: 6, wytheSeparation: 0 }
+const ENGLISH_CROSS: SceneState = { ...BASE, bondPattern: 'englishCross', numWythes: 2, rows: 6, cols: 6, wytheSeparation: 0 }
+const FLEMISH: SceneState = { ...BASE, bondPattern: 'flemish', numWythes: 2, rows: 6, cols: 6, wytheSeparation: 0 }
+const MONK: SceneState = { ...BASE, bondPattern: 'monk', numWythes: 2, rows: 6, cols: 8, wytheSeparation: 0 }
 
 export const moments: Moment[] = [
-  { isSubstep: false, text: 'Imagine a brick wall.', scene: S1 },
+  // Moment 0: no bricks visible yet (fallProgress=0 puts them above screen)
+  { isSubstep: false, text: 'Imagine a brick wall.', scene: { ...S1, fallProgress: 0 } },
+  // Moment 1: bricks fall into stretcher bond
   { isSubstep: true,  text: "You're probably picturing something like this:", scene: S1 },
-  { isSubstep: false, text: 'Each *course*, or row, is made of bricks laid end-to-end.', scene: S1 },
-  { isSubstep: true,  text: 'Each brick laid in this orientation is called a *stretcher*. Because of this, this pattern is called *stretcher bond*.', scene: S1 },
+  // Moment 2: courses highlight one by one (auto-wave)
+  { isSubstep: false, text: 'Each *course*, or row, is made of bricks laid end-to-end.', scene: { ...S1, highlightWaveActive: true } },
+  // Moment 3: individual bricks highlight column by column (auto-wave)
+  { isSubstep: true,  text: 'Each brick laid in this orientation is called a *stretcher*. Because of this, this pattern is called *stretcher bond*.', scene: { ...S1, highlightColWaveActive: true } },
   { isSubstep: false, text: "Stretcher bond is often used in modern buildings as a facade. Behind the facade is a structural wall made of wood or reinforced concrete. That's what really holds the building up.", scene: S1 },
-  { isSubstep: false, text: "In between the bricks and the structural wall, there's often a gap, sometimes filled with insulation or sometimes left empty. The gap provides moisture control and insulation. This is called a *cavity wall*.", scene: S1 },
-  { isSubstep: true,  text: 'The bricks are connected to the structural wall with metal ties.', scene: S1 },
+  // Moment 5–6: cavity wall — bricks shift forward and become semi-transparent
+  { isSubstep: false, text: "In between the bricks and the structural wall, there's often a gap, sometimes filled with insulation or sometimes left empty. The gap provides moisture control and insulation. This is called a *cavity wall*.", scene: { ...S1, brickOpacity: 0.4 } },
+  { isSubstep: true,  text: 'The bricks are connected to the structural wall with metal ties.', scene: { ...S1, brickOpacity: 0.4 } },
+  // Moment 7: restore opacity — traditional masonry, no modern aids
   { isSubstep: false, text: 'But in traditional masonry, there were no cavities, no ties, and no reinforced concrete. A brick wall was really a brick wall.', scene: S1 },
   { isSubstep: true,  text: 'And a stretcher bond wall like this is too thin to stand on its own.', scene: S1 },
   { isSubstep: false, text: 'To make a strong brick wall, you need multiple vertical layers, called *wythes*. You might start by building 2 wythes of stretchers right next to each other.', scene: S2_CLOSE },

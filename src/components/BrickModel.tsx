@@ -18,9 +18,21 @@ const MORTAR = 10 // mm — joint thickness
 // of stretchers align with front face of headers (both at z = ±BW/2 = ±107.5mm).
 const WYTHE_Z = (BD + MORTAR) / 2  // 56.25mm
 
+const ROW_STEP = BH + MORTAR  // 75mm between row centres
+
 const LERP = 0.05
 const MAX_BRICKS = 200
 const STASH_POS = new THREE.Vector3(0, -5000, 0)
+const FALL_HEIGHT = 2000 // mm — how far above final position bricks start
+
+// ms per unit for each wave type
+const WAVE_COURSE_MS = 400
+const WAVE_COL_MS = 200
+
+// Cascade fall animation timing
+const ROW_DELAY_MS = 150    // ms between each row starting to fall
+const COL_DELAY_MS = 40     // ms between each column within a row
+const FALL_DURATION_MS = 350 // ms for one brick to travel FALL_HEIGHT to rest
 
 export interface BrickDef {
   x: number
@@ -30,12 +42,10 @@ export interface BrickDef {
 }
 
 // A header brick is turned 90°, so its long axis runs Z instead of X.
-// Stretcher: length=BW along X, depth=BD along Z
-// Header:    length=BD along X (face), depth=BW along Z (full length into wall)
 const HEADER_ROT_Y = Math.PI / 2
 
 function rowY(row: number): number {
-  return row * (BH + MORTAR)
+  return row * ROW_STEP
 }
 
 function stretcherX(col: number, offset: number): number {
@@ -201,23 +211,154 @@ export function getBrickDefs(scene: SceneState): BrickDef[] {
   return defs.map(d => ({ ...d, x: d.x - cx, y: d.y - cy }))
 }
 
-function makeBrickMaterial() {
-  return new THREE.MeshStandardMaterial({ color: '#b45c2a', roughness: 0.85, metalness: 0.05 })
+// Convert a centered brick Y position back to a 0-based row index.
+// Row Y values after centering are evenly spaced at ROW_STEP apart.
+function rowFromY(y: number, rows: number): number {
+  const minY = -(rows - 1) * ROW_STEP / 2
+  return Math.round((y - minY) / ROW_STEP)
+}
+
+function approxColFromX(x: number, xRange: { min: number; max: number }, cols: number): number {
+  if (xRange.max <= xRange.min) return 0
+  const frac = (x - xRange.min) / (xRange.max - xRange.min)
+  return Math.round(frac * (cols - 1))
+}
+
+function easeIn(t: number): number { return t * t }
+
+function cascadeProgress(elapsed: number, row: number, col: number): number {
+  const delay = row * ROW_DELAY_MS + col * COL_DELAY_MS
+  return Math.min(Math.max((elapsed - delay) / FALL_DURATION_MS, 0), 1)
+}
+
+function makeMaterial(color: string): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05, transparent: true, opacity: 1 })
 }
 
 export default function BrickModel({ targetConfig }: Props) {
-  const groupRef = useRef<THREE.Group>(null)
   const geo = useRef(new THREE.BoxGeometry(BW, BH, BD))
-  const mat = useRef(makeBrickMaterial())
+  const baseMat = useRef(makeMaterial('#b45c2a'))
+  const highlightMat = useRef(makeMaterial('#e8a050'))
+
   const defs = useMemo(() => getBrickDefs(targetConfig), [targetConfig])
 
+  // X range of current defs, for the column-highlight wave
+  const xRange = useMemo(() => {
+    if (defs.length === 0) return { min: 0, max: 0 }
+    let min = Infinity, max = -Infinity
+    for (const d of defs) {
+      if (d.x < min) min = d.x
+      if (d.x > max) max = d.x
+    }
+    return { min, max }
+  }, [defs])
+
   const meshRefs = useRef<(THREE.Mesh | null)[]>(Array(MAX_BRICKS).fill(null))
-  const lerpedPos = useRef<THREE.Vector3[]>(
-    Array.from({ length: MAX_BRICKS }, () => STASH_POS.clone())
-  )
   const lerpedRotY = useRef<number[]>(Array(MAX_BRICKS).fill(0))
 
-  useFrame(() => {
+  // Start active bricks above their final positions if fallProgress < 1;
+  // stash bricks always start at STASH_POS.
+  const lerpedPos = useRef<THREE.Vector3[]>(
+    (() => {
+      const initialDefs = getBrickDefs(targetConfig)
+      return Array.from({ length: MAX_BRICKS }, (_, i) => {
+        if (targetConfig.fallProgress < 1 && i < initialDefs.length) {
+          const d = initialDefs[i]
+          return new THREE.Vector3(d.x, d.y + FALL_HEIGHT, d.z)
+        }
+        return STASH_POS.clone()
+      })
+    })()
+  )
+
+  const lerpedOpacity = useRef(targetConfig.brickOpacity)
+
+  // Wave animation state — times are in ms from clock.getElapsedTime()*1000
+  const courseWaveStart = useRef<number | null>(null)
+  const colWaveStart = useRef<number | null>(null)
+  const prevHighlightWave = useRef(targetConfig.highlightWaveActive)
+  const prevColWave = useRef(targetConfig.highlightColWaveActive)
+
+  // Cascade fall animation state
+  const fallWaveStart = useRef<number | null>(null)
+  const prevFallProgress = useRef(targetConfig.fallProgress)
+
+  useFrame(({ clock }) => {
+    const now = clock.getElapsedTime() * 1000
+
+    // --- Detect rising edges to start / reset waves ---
+    if (targetConfig.highlightWaveActive && !prevHighlightWave.current) {
+      courseWaveStart.current = now
+    }
+    if (!targetConfig.highlightWaveActive) {
+      courseWaveStart.current = null
+    }
+    prevHighlightWave.current = targetConfig.highlightWaveActive
+
+    if (targetConfig.highlightColWaveActive && !prevColWave.current) {
+      colWaveStart.current = now
+    }
+    if (!targetConfig.highlightColWaveActive) {
+      colWaveStart.current = null
+    }
+    prevColWave.current = targetConfig.highlightColWaveActive
+
+    // --- Fall cascade rising-edge detection ---
+    if (targetConfig.fallProgress === 1 && prevFallProgress.current < 1) {
+      fallWaveStart.current = now
+    }
+    if (targetConfig.fallProgress < 1) {
+      fallWaveStart.current = null
+    }
+    prevFallProgress.current = targetConfig.fallProgress
+
+    // --- Course highlight set ---
+    const highlightedRows = new Set<number>(targetConfig.highlightedCourses)
+    if (courseWaveStart.current !== null) {
+      const elapsed = now - courseWaveStart.current
+      const rows = targetConfig.rows
+      const halfDur = rows * WAVE_COURSE_MS
+      if (elapsed < halfDur) {
+        // forward: add courses bottom-up
+        const n = Math.min(Math.floor(elapsed / WAVE_COURSE_MS) + 1, rows)
+        for (let r = 0; r < n; r++) highlightedRows.add(r)
+      } else {
+        // reverse: remove courses bottom-up
+        const removed = Math.min(Math.floor((elapsed - halfDur) / WAVE_COURSE_MS), rows)
+        for (let r = removed; r < rows; r++) highlightedRows.add(r)
+      }
+    }
+
+    // --- Column wave threshold ---
+    let colThreshold = -Infinity // nothing highlighted
+    if (colWaveStart.current !== null) {
+      const elapsed = now - colWaveStart.current
+      const totalW = xRange.max - xRange.min
+      const halfDur = targetConfig.cols * WAVE_COL_MS
+      if (elapsed < halfDur) {
+        colThreshold = xRange.min + totalW * (elapsed / halfDur)
+      } else {
+        const remElapsed = elapsed - halfDur
+        colThreshold = xRange.max - totalW * Math.min(remElapsed / halfDur, 1)
+      }
+    }
+
+    // --- Lerp global opacity ---
+    lerpedOpacity.current += (targetConfig.brickOpacity - lerpedOpacity.current) * LERP
+    const opacity = lerpedOpacity.current
+    baseMat.current.opacity = opacity
+    highlightMat.current.opacity = opacity
+
+    // --- Auto-clear cascade once all bricks have landed ---
+    const totalCascadeDur =
+      (targetConfig.rows - 1) * ROW_DELAY_MS +
+      (targetConfig.cols - 1) * COL_DELAY_MS +
+      FALL_DURATION_MS
+    if (fallWaveStart.current !== null && now - fallWaveStart.current > totalCascadeDur) {
+      fallWaveStart.current = null
+    }
+
+    // --- Update each brick ---
     for (let i = 0; i < MAX_BRICKS; i++) {
       const mesh = meshRefs.current[i]
       if (!mesh) continue
@@ -226,28 +367,49 @@ export default function BrickModel({ targetConfig }: Props) {
       const lp = lerpedPos.current[i]
 
       const tx = target?.x ?? STASH_POS.x
-      const ty = target?.y ?? STASH_POS.y
       const tz = target?.z ?? STASH_POS.z
       const trotY = target?.rotY ?? 0
 
+      let ty: number
+      let directY = false
+
+      if (target && fallWaveStart.current !== null) {
+        const elapsed = now - fallWaveStart.current
+        const row = rowFromY(target.y, targetConfig.rows)
+        const col = approxColFromX(target.x, xRange, targetConfig.cols)
+        const progress = cascadeProgress(elapsed, row, col)
+        ty = target.y + (1 - easeIn(progress)) * FALL_HEIGHT
+        directY = true
+      } else {
+        const fallOffset = target ? (1 - targetConfig.fallProgress) * FALL_HEIGHT : 0
+        ty = (target?.y ?? STASH_POS.y) + fallOffset
+      }
+
       lp.x += (tx - lp.x) * LERP
-      lp.y += (ty - lp.y) * LERP
+      if (directY) lp.y = ty
+      else         lp.y += (ty - lp.y) * LERP
       lp.z += (tz - lp.z) * LERP
       lerpedRotY.current[i] += (trotY - lerpedRotY.current[i]) * LERP
 
       mesh.position.copy(lp)
       mesh.rotation.y = lerpedRotY.current[i]
+
+      // Highlight: course wave OR column wave
+      const isHighlighted = target !== null && (
+        highlightedRows.has(rowFromY(target.y, targetConfig.rows)) ||
+        (colWaveStart.current !== null && target.x <= colThreshold)
+      )
+      mesh.material = isHighlighted ? highlightMat.current : baseMat.current
     }
   })
 
   return (
-    <group ref={groupRef} rotation={[0, 0.3, 0]}>
+    <group rotation={[0, 0.3, 0]}>
       {Array.from({ length: MAX_BRICKS }, (_, i) => (
         <mesh
           key={i}
           ref={(el) => { meshRefs.current[i] = el }}
           geometry={geo.current}
-          material={mat.current}
         />
       ))}
     </group>
