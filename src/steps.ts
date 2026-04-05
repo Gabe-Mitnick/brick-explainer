@@ -6,11 +6,14 @@ export interface SceneState {
   rows: number
   cols: number
   wytheSeparation: number
-  fallProgress: number           // 0 = bricks above screen, 1 = in final position
-  brickOpacity: number           // 0–1, global brick transparency
-  highlightedCourses: number[]   // rows lit with highlight material (static)
-  highlightWaveActive: boolean   // auto-sequence course highlights on entry
+  fallProgress: number            // 0 = bricks above screen, 1 = in final position
+  brickOpacity: number            // 0–1, global brick transparency
+  highlightedCourses: number[]    // rows lit with highlight material (static)
+  highlightWaveActive: boolean    // auto-sequence course highlights on entry
   highlightColWaveActive: boolean // auto-sequence column highlights on entry
+  structuralWallOpacity: number   // 0 = hidden, 1 = fully visible
+  metalTiesOpacity: number        // 0 = hidden, 1 = fully visible
+  cameraOrbit: number             // radians; rotates camera around Y to look behind wall
 }
 
 export interface Moment {
@@ -26,6 +29,9 @@ const BASE = {
   highlightedCourses: [] as number[],
   highlightWaveActive: false,
   highlightColWaveActive: false,
+  structuralWallOpacity: 0,
+  metalTiesOpacity: 0,
+  cameraOrbit: 0,
 }
 
 const S1: SceneState = { ...BASE, bondPattern: 'stretcher', numWythes: 1, rows: 5, cols: 6, wytheSeparation: 0 }
@@ -46,10 +52,10 @@ export const moments: Moment[] = [
   { isSubstep: false, text: 'Each *course*, or row, is made of bricks laid end-to-end.', scene: { ...S1, highlightWaveActive: true } },
   // Moment 3: individual bricks highlight column by column (auto-wave)
   { isSubstep: true,  text: 'Each brick laid in this orientation is called a *stretcher*. Because of this, this pattern is called *stretcher bond*.', scene: { ...S1, highlightColWaveActive: true } },
-  { isSubstep: false, text: "Stretcher bond is often used in modern buildings as a facade. Behind the facade is a structural wall made of wood or reinforced concrete. That's what really holds the building up.", scene: S1 },
-  // Moment 5–6: cavity wall — bricks shift forward and become semi-transparent
-  { isSubstep: false, text: "In between the bricks and the structural wall, there's often a gap, sometimes filled with insulation or sometimes left empty. The gap provides moisture control and insulation. This is called a *cavity wall*.", scene: { ...S1, brickOpacity: 0.4 } },
-  { isSubstep: true,  text: 'The bricks are connected to the structural wall with metal ties.', scene: { ...S1, brickOpacity: 0.4 } },
+  { isSubstep: false, text: "Stretcher bond is often used in modern buildings as a facade. Behind the facade is a structural wall made of wood or reinforced concrete. That's what really holds the building up.", scene: { ...S1, structuralWallOpacity: 1 } },
+  // Moment 5–6: cavity wall — bricks become semi-transparent, structural wall visible from front
+  { isSubstep: false, text: "In between the bricks and the structural wall, there's often a gap, sometimes filled with insulation or sometimes left empty. The gap provides moisture control and insulation. This is called a *cavity wall*.", scene: { ...S1, brickOpacity: 0.4, structuralWallOpacity: 1 } },
+  { isSubstep: true,  text: 'The bricks are connected to the structural wall with metal ties.', scene: { ...S1, brickOpacity: 0.4, structuralWallOpacity: 1, metalTiesOpacity: 1 } },
   // Moment 7: restore opacity — traditional masonry, no modern aids
   { isSubstep: false, text: 'But in traditional masonry, there were no cavities, no ties, and no reinforced concrete. A brick wall was really a brick wall.', scene: S1 },
   { isSubstep: true,  text: 'And a stretcher bond wall like this is too thin to stand on its own.', scene: S1 },

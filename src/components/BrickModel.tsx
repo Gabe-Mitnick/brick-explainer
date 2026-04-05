@@ -289,6 +289,7 @@ export default function BrickModel({ targetConfig }: Props) {
   )
 
   const lerpedOpacity = useRef(targetConfig.brickOpacity)
+  const lastOpaqueMode = useRef(true)
 
   // Wave animation state — times are in ms from clock.getElapsedTime()*1000
   const courseWaveStart = useRef<number | null>(null)
@@ -334,6 +335,17 @@ export default function BrickModel({ targetConfig }: Props) {
 
     // --- Lerp global opacity ---
     lerpedOpacity.current += (targetConfig.brickOpacity - lerpedOpacity.current) * LERP
+
+    // --- Switch material mode at opacity threshold ---
+    const isOpaque = lerpedOpacity.current > 0.99
+    if (isOpaque !== lastOpaqueMode.current) {
+      lastOpaqueMode.current = isOpaque
+      for (const mat of brickMats.current) {
+        mat.depthWrite = isOpaque
+        mat.side = isOpaque ? THREE.FrontSide : THREE.DoubleSide
+        mat.needsUpdate = true
+      }
+    }
 
     // --- Auto-clear cascade once all bricks have landed ---
     const totalCascadeDur =
@@ -384,6 +396,12 @@ export default function BrickModel({ targetConfig }: Props) {
       const row = target ? rowFromY(target.y, targetConfig.rows) : -1
       const col = target ? approxColFromX(target.x, xRange, targetConfig.cols) : -1
 
+      // renderOrder layers: wall=0, ties=1, bottom-row bricks=2, top-row bricks=rows+1.
+      // Upper rows render last (on top), guaranteeing correct visual layering for the
+      // off-axis orthographic camera regardless of clip-space sort order.
+      const newRenderOrder = target !== null ? row + 2 : 0
+      if (mesh.renderOrder !== newRenderOrder) mesh.renderOrder = newRenderOrder
+
       let intensity = 0
       if (target !== null) {
         if (highlightedRows.has(row)) intensity = 1
@@ -410,7 +428,7 @@ export default function BrickModel({ targetConfig }: Props) {
   })
 
   return (
-    <group rotation={[0, 0.3, 0]}>
+    <group>
       {Array.from({ length: MAX_BRICKS }, (_, i) => (
         <mesh
           key={i}
