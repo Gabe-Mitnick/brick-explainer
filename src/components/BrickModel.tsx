@@ -25,6 +25,25 @@ const MAX_BRICKS = 200
 const STASH_POS = new THREE.Vector3(0, -5000, 0)
 const FALL_HEIGHT = 2000 // mm — how far above final position bricks start
 
+const GRAVITY            = 7000           // mm/s²
+const DELTA_MAX          = 0.1            // s — clamp delta against spike frames
+const COLLAPSE_VX_RANGE  = 600            // mm/s — horizontal X scatter (±300)
+const COLLAPSE_VZ_RANGE  = 600            // mm/s — depth scatter (±300)
+const COLLAPSE_VY_MIN    = -100           // mm/s — min initial Y (downward)
+const COLLAPSE_VY_MAX    =  200           // mm/s — max initial Y (brief upward puff)
+const COLLAPSE_ROT_SPEED = Math.PI * 4   // rad/s — max tumble speed
+const SPLIT_VZ_BASE      = 350           // mm/s — per-wythe Z separation velocity
+const SPLIT_VZ_RANDOM    = 150           // mm/s — per-brick Z noise (±75)
+const SPLIT_VX_RANDOM    = 100           // mm/s — per-brick X noise (±50)
+const SPLIT_VY_RANDOM    = 80            // mm/s — per-brick Y noise (±40)
+const SPLIT_ROT_SPEED    = Math.PI * 3   // rad/s — max tumble speed
+
+// Deterministic pseudo-random 0–1 from integer seed
+function seededRand(seed: number): number {
+  const x = Math.sin(seed + 1.618) * 10000
+  return x - Math.floor(x)
+}
+
 const BASE_COLOR      = new THREE.Color('#b45c2a')
 const HIGHLIGHT_COLOR = new THREE.Color('#e8a050')
 
@@ -273,6 +292,21 @@ export default function BrickModel({ targetConfig }: Props) {
   const meshRefs = useRef<(THREE.Mesh | null)[]>(Array(MAX_BRICKS).fill(null))
   const lerpedRotY = useRef<number[]>(Array(MAX_BRICKS).fill(0))
 
+  const physVel               = useRef<THREE.Vector3[]>(Array.from({ length: MAX_BRICKS }, () => new THREE.Vector3()))
+  const physRotVelY           = useRef<number[]>(Array(MAX_BRICKS).fill(0))
+  const physRotVelX           = useRef<number[]>(Array(MAX_BRICKS).fill(0))
+  const physRotX              = useRef<number[]>(Array(MAX_BRICKS).fill(0))
+  const collapsePhysicsActive = useRef(false)
+  const splitPhysicsActive    = useRef(false)
+  const prevCollapseProgress  = useRef(targetConfig.collapseProgress)
+  const prevSplitProgress     = useRef(targetConfig.splitProgress)
+
+  function snapBrick(i: number, d: BrickDef) {
+    lerpedPos.current[i].set(d.x, d.y, d.z)
+    lerpedRotY.current[i] = d.rotY
+    physRotX.current[i] = 0
+  }
+
   // Start active bricks above their final positions if fallProgress < 1;
   // stash bricks always start at STASH_POS.
   const lerpedPos = useRef<THREE.Vector3[]>(
@@ -301,7 +335,8 @@ export default function BrickModel({ targetConfig }: Props) {
   const fallWaveStart = useRef<number | null>(null)
   const prevFallProgress = useRef(targetConfig.fallProgress)
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
+    const dt = typeof delta === 'number' && delta > 0 ? Math.min(delta, DELTA_MAX) : 1 / 60
     const now = clock.getElapsedTime() * 1000
 
     // --- Detect rising edges to start / reset waves ---
@@ -329,6 +364,47 @@ export default function BrickModel({ targetConfig }: Props) {
       fallWaveStart.current = null
     }
     prevFallProgress.current = targetConfig.fallProgress
+
+    // --- Collapse physics ---
+    if (targetConfig.collapseProgress === 1 && prevCollapseProgress.current < 1) {
+      collapsePhysicsActive.current = true
+      for (let i = 0; i < defs.length; i++) {
+        const d = defs[i]
+        snapBrick(i, d)
+        const v = physVel.current[i]
+        v.x = (seededRand(i * 7 + 0) - 0.5) * COLLAPSE_VX_RANGE
+        v.y = seededRand(i * 7 + 1) * (COLLAPSE_VY_MAX - COLLAPSE_VY_MIN) + COLLAPSE_VY_MIN
+        v.z = (seededRand(i * 7 + 2) - 0.5) * COLLAPSE_VZ_RANGE
+        physRotVelY.current[i] = (seededRand(i * 7 + 3) - 0.5) * COLLAPSE_ROT_SPEED
+        physRotVelX.current[i] = (seededRand(i * 7 + 4) - 0.5) * COLLAPSE_ROT_SPEED
+      }
+    }
+    if (targetConfig.collapseProgress === 0 && collapsePhysicsActive.current) {
+      collapsePhysicsActive.current = false
+      for (let i = 0; i < defs.length; i++) snapBrick(i, defs[i])
+    }
+    prevCollapseProgress.current = targetConfig.collapseProgress
+
+    // --- Split physics ---
+    if (targetConfig.splitProgress === 1 && prevSplitProgress.current < 1) {
+      splitPhysicsActive.current = true
+      for (let i = 0; i < defs.length; i++) {
+        const d = defs[i]
+        snapBrick(i, d)
+        const zSign = Math.abs(d.z) > 10 ? Math.sign(d.z) : 0
+        const v = physVel.current[i]
+        v.z = zSign * SPLIT_VZ_BASE + (seededRand(i * 7 + 5) - 0.5) * SPLIT_VZ_RANDOM
+        v.x = (seededRand(i * 7 + 6) - 0.5) * SPLIT_VX_RANDOM
+        v.y = (seededRand(i * 7 + 7) - 0.5) * SPLIT_VY_RANDOM
+        physRotVelY.current[i] = (seededRand(i * 7 + 8) - 0.5) * SPLIT_ROT_SPEED
+        physRotVelX.current[i] = (seededRand(i * 7 + 9) - 0.5) * SPLIT_ROT_SPEED
+      }
+    }
+    if (targetConfig.splitProgress === 0 && splitPhysicsActive.current) {
+      splitPhysicsActive.current = false
+      for (let i = 0; i < defs.length; i++) snapBrick(i, defs[i])
+    }
+    prevSplitProgress.current = targetConfig.splitProgress
 
     // --- Static course highlight set (no wave logic here) ---
     const highlightedRows = new Set<number>(targetConfig.highlightedCourses)
@@ -383,14 +459,27 @@ export default function BrickModel({ targetConfig }: Props) {
         ty = (target?.y ?? STASH_POS.y) + fallOffset
       }
 
-      lp.x += (tx - lp.x) * LERP
-      if (directY) lp.y = ty
-      else         lp.y += (ty - lp.y) * LERP
-      lp.z += (tz - lp.z) * LERP
-      lerpedRotY.current[i] += (trotY - lerpedRotY.current[i]) * LERP
+      const physicsActive = (collapsePhysicsActive.current || splitPhysicsActive.current) && target !== null
+
+      if (physicsActive) {
+        physVel.current[i].y -= GRAVITY * dt
+        lp.x += physVel.current[i].x * dt
+        lp.y += physVel.current[i].y * dt
+        lp.z += physVel.current[i].z * dt
+        lerpedRotY.current[i] += physRotVelY.current[i] * dt
+        physRotX.current[i]   += physRotVelX.current[i] * dt
+      } else {
+        lp.x += (tx - lp.x) * LERP
+        if (directY) lp.y = ty
+        else         lp.y += (ty - lp.y) * LERP
+        lp.z += (tz - lp.z) * LERP
+        lerpedRotY.current[i] += (trotY - lerpedRotY.current[i]) * LERP
+        physRotX.current[i]   += (0 - physRotX.current[i]) * LERP
+      }
 
       mesh.position.copy(lp)
       mesh.rotation.y = lerpedRotY.current[i]
+      mesh.rotation.x = physRotX.current[i]
 
       // Per-brick smooth highlight intensity
       const row = target ? rowFromY(target.y, targetConfig.rows) : -1
