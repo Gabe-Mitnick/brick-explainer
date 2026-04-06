@@ -1,57 +1,87 @@
 .panel {
-  position: absolute;
-  inset: 0;
-  padding: 2rem 1.5rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  will-change: transform;
+	position: absolute;
+	inset: 0;
+	padding: 2rem 1.5rem 1.5rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	will-change: transform;
 }
 
 @keyframes enterFromRight {
-  from { transform: translateX(100%) }
-  to   { transform: translateX(0) }
+	from {
+		transform: translateX(100%);
+	}
+	to {
+		transform: translateX(0);
+	}
 }
 
 @keyframes enterFromLeft {
-  from { transform: translateX(-100%) }
-  to   { transform: translateX(0) }
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(0);
+	}
 }
 
 @keyframes exitToLeft {
-  from { transform: translateX(0) }
-  to   { transform: translateX(-100%) }
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(-100%);
+	}
 }
 
 @keyframes exitToRight {
-  from { transform: translateX(0) }
-  to   { transform: translateX(100%) }
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(100%);
+	}
 }
 
-.enterFromRight { animation: enterFromRight 0.4s ease forwards; }
-.enterFromLeft  { animation: enterFromLeft  0.4s ease forwards; }
-.exitToLeft     { animation: exitToLeft     0.4s ease forwards; }
-.exitToRight    { animation: exitToRight    0.4s ease forwards; }
+.enterFromRight {
+	animation: enterFromRight 0.4s ease forwards;
+}
+.enterFromLeft {
+	animation: enterFromLeft 0.4s ease forwards;
+}
+.exitToLeft {
+	animation: exitToLeft 0.4s ease forwards;
+}
+.exitToRight {
+	animation: exitToRight 0.4s ease forwards;
+}
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(0.4rem); }
-  to   { opacity: 1; transform: translateY(0); }
+	from {
+		opacity: 0;
+		transform: translateY(0.4rem);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 .text {
-  font-family: system-ui, sans-serif;
-  font-size: 1.25rem;
-  line-height: 1.6;
-  color: #d4c4a0;
-  max-width: 40ch;
+	font-family: system-ui, sans-serif;
+	font-size: 1.25rem;
+	line-height: 1.6;
+	color: #d4c4a0;
+	max-width: 40ch;
 }
 
 .text em {
-  font-style: normal;
-  font-weight: 700;
-  color: #b07fdd;
+	font-style: normal;
+	font-weight: 700;
+	color: #b07fdd;
 }
 
 .substepText {
-  animation: fadeIn 0.35s ease forwards;
+	animation: fadeIn 0.35s ease forwards;
 }
