@@ -25,18 +25,21 @@ const MAX_BRICKS = 200
 const STASH_POS = new THREE.Vector3(0, -5000, 0)
 const FALL_HEIGHT = 2000 // mm — how far above final position bricks start
 
-const GRAVITY            = 7000           // mm/s²
+const GRAVITY            = 5000           // mm/s²
 const DELTA_MAX          = 0.1            // s — clamp delta against spike frames
-const COLLAPSE_VX_RANGE  = 600            // mm/s — horizontal X scatter (±300)
-const COLLAPSE_VZ_RANGE  = 600            // mm/s — depth scatter (±300)
-const COLLAPSE_VY_MIN    = -100           // mm/s — min initial Y (downward)
-const COLLAPSE_VY_MAX    =  200           // mm/s — max initial Y (brief upward puff)
-const COLLAPSE_ROT_SPEED = Math.PI * 4   // rad/s — max tumble speed
-const SPLIT_VZ_BASE      = 350           // mm/s — per-wythe Z separation velocity
-const SPLIT_VZ_RANDOM    = 150           // mm/s — per-brick Z noise (±75)
-const SPLIT_VX_RANDOM    = 100           // mm/s — per-brick X noise (±50)
-const SPLIT_VY_RANDOM    = 80            // mm/s — per-brick Y noise (±40)
-const SPLIT_ROT_SPEED    = Math.PI * 3   // rad/s — max tumble speed
+const COLLAPSE_VX_RANGE  = 420            // mm/s — horizontal X scatter (±210)
+const COLLAPSE_VZ_RANGE  = 420            // mm/s — depth scatter (±210)
+const COLLAPSE_VY_MIN    = -70            // mm/s — min initial Y (downward)
+const COLLAPSE_VY_MAX    =  140           // mm/s — max initial Y (brief upward puff)
+const COLLAPSE_ROT_SPEED = Math.PI * 2.8 // rad/s — max tumble speed
+const SPLIT_VZ_BASE      = 385           // mm/s — Z velocity at top row (height-scaled)
+const SPLIT_VZ_RANDOM    = 84            // mm/s — per-brick Z noise (±42)
+const SPLIT_VX_RANDOM    = 70            // mm/s — per-brick X noise (±35)
+const SPLIT_VY_RANDOM    = 56            // mm/s — per-brick Y noise (±28)
+const SPLIT_ROT_X_BASE   = Math.PI * 0.56 // rad/s — coherent outward tipping per wythe
+const SPLIT_ROT_X_NOISE  = Math.PI * 0.28 // rad/s — per-brick variation
+const SPLIT_ROT_Y_SPEED  = Math.PI * 1.05 // rad/s — random Y tumble
+const SPLIT_ROW_DELAY_MS = 120            // ms between each successive row launching (top first)
 
 // Deterministic pseudo-random 0–1 from integer seed
 function seededRand(seed: number): number {
@@ -296,10 +299,12 @@ export default function BrickModel({ targetConfig }: Props) {
   const physRotVelY           = useRef<number[]>(Array(MAX_BRICKS).fill(0))
   const physRotVelX           = useRef<number[]>(Array(MAX_BRICKS).fill(0))
   const physRotX              = useRef<number[]>(Array(MAX_BRICKS).fill(0))
-  const collapsePhysicsActive = useRef(false)
-  const splitPhysicsActive    = useRef(false)
-  const prevCollapseProgress  = useRef(targetConfig.collapseProgress)
-  const prevSplitProgress     = useRef(targetConfig.splitProgress)
+  const collapsePhysicsActive  = useRef(false)
+  const splitPhysicsActive     = useRef(false)
+  const splitWaveStart         = useRef<number | null>(null)
+  const splitBrickLaunched     = useRef<boolean[]>(Array(MAX_BRICKS).fill(false))
+  const prevCollapseProgress   = useRef(targetConfig.collapseProgress)
+  const prevSplitProgress      = useRef(targetConfig.splitProgress)
 
   function snapBrick(i: number, d: BrickDef) {
     lerpedPos.current[i].set(d.x, d.y, d.z)
@@ -388,20 +393,29 @@ export default function BrickModel({ targetConfig }: Props) {
     // --- Split physics ---
     if (targetConfig.splitProgress === 1 && prevSplitProgress.current < 1) {
       splitPhysicsActive.current = true
+      splitWaveStart.current = now
+      splitBrickLaunched.current.fill(false)
+      const yMin   = -(targetConfig.rows - 1) * ROW_STEP / 2
+      const yRange =  (targetConfig.rows - 1) * ROW_STEP    // 0 for 1-row wall
       for (let i = 0; i < defs.length; i++) {
         const d = defs[i]
         snapBrick(i, d)
         const zSign = Math.abs(d.z) > 10 ? Math.sign(d.z) : 0
+        // 0 at bottom row → 1 at top row
+        const h = yRange > 0 ? (d.y - yMin) / yRange : 0.5
         const v = physVel.current[i]
-        v.z = zSign * SPLIT_VZ_BASE + (seededRand(i * 7 + 5) - 0.5) * SPLIT_VZ_RANDOM
+        v.z = zSign * SPLIT_VZ_BASE * h + (seededRand(i * 7 + 5) - 0.5) * SPLIT_VZ_RANDOM
         v.x = (seededRand(i * 7 + 6) - 0.5) * SPLIT_VX_RANDOM
         v.y = (seededRand(i * 7 + 7) - 0.5) * SPLIT_VY_RANDOM
-        physRotVelY.current[i] = (seededRand(i * 7 + 8) - 0.5) * SPLIT_ROT_SPEED
-        physRotVelX.current[i] = (seededRand(i * 7 + 9) - 0.5) * SPLIT_ROT_SPEED
+        // rotation.x positive → top tilts toward −z; front wythe (zSign=−1) tips outward → positive
+        physRotVelX.current[i] = -zSign * SPLIT_ROT_X_BASE + (seededRand(i * 7 + 9) - 0.5) * SPLIT_ROT_X_NOISE
+        physRotVelY.current[i] =  (seededRand(i * 7 + 8) - 0.5) * SPLIT_ROT_Y_SPEED
       }
     }
     if (targetConfig.splitProgress === 0 && splitPhysicsActive.current) {
       splitPhysicsActive.current = false
+      splitWaveStart.current = null
+      splitBrickLaunched.current.fill(false)
       for (let i = 0; i < defs.length; i++) snapBrick(i, defs[i])
     }
     prevSplitProgress.current = targetConfig.splitProgress
@@ -439,6 +453,8 @@ export default function BrickModel({ targetConfig }: Props) {
 
       const target = i < defs.length ? defs[i] : null
       const lp = lerpedPos.current[i]
+      const row = target ? rowFromY(target.y, targetConfig.rows) : -1
+      const col = target ? approxColFromX(target.x, xRange, targetConfig.cols) : -1
 
       const tx = target?.x ?? STASH_POS.x
       const tz = target?.z ?? STASH_POS.z
@@ -449,8 +465,6 @@ export default function BrickModel({ targetConfig }: Props) {
 
       if (target && fallWaveStart.current !== null) {
         const elapsed = now - fallWaveStart.current
-        const row = rowFromY(target.y, targetConfig.rows)
-        const col = approxColFromX(target.x, xRange, targetConfig.cols)
         const progress = cascadeProgress(elapsed, row, col)
         ty = target.y + (1 - easeIn(progress)) * FALL_HEIGHT
         directY = true
@@ -459,7 +473,18 @@ export default function BrickModel({ targetConfig }: Props) {
         ty = (target?.y ?? STASH_POS.y) + fallOffset
       }
 
-      const physicsActive = (collapsePhysicsActive.current || splitPhysicsActive.current) && target !== null
+      // Launch split bricks row-by-row from top down
+      if (splitPhysicsActive.current && splitWaveStart.current !== null && target !== null && !splitBrickLaunched.current[i]) {
+        const delay = (targetConfig.rows - 1 - row) * SPLIT_ROW_DELAY_MS
+        if (now - splitWaveStart.current >= delay) {
+          splitBrickLaunched.current[i] = true
+        }
+      }
+
+      const physicsActive = target !== null && (
+        collapsePhysicsActive.current ||
+        (splitPhysicsActive.current && splitBrickLaunched.current[i])
+      )
 
       if (physicsActive) {
         physVel.current[i].y -= GRAVITY * dt
@@ -482,8 +507,6 @@ export default function BrickModel({ targetConfig }: Props) {
       mesh.rotation.x = physRotX.current[i]
 
       // Per-brick smooth highlight intensity
-      const row = target ? rowFromY(target.y, targetConfig.rows) : -1
-      const col = target ? approxColFromX(target.x, xRange, targetConfig.cols) : -1
 
       // renderOrder layers: wall=0, ties=1, bottom-row bricks=2, top-row bricks=rows+1.
       // Upper rows render last (on top), guaranteeing correct visual layering for the
