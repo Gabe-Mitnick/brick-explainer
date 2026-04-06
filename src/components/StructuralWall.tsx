@@ -6,10 +6,10 @@ interface Props {
 	targetOpacity: number
 }
 
-const WALL_WIDTH = 1800
-const WALL_HEIGHT = 600
-const BOX_DEPTH = 307.5 // 3 × BD (102.5mm)
-const WALL_Z = -255 // box center; front face at ~-101mm, ~50mm behind brick back face
+const WALL_WIDTH = 1452.5 // matches brick wall extent: 5×(BW+MORTAR) + (BW+MORTAR)/2 + BW, cols=6
+const WALL_HEIGHT = 365 // matches brick wall extent: 4×ROW_STEP + BH, rows=5
+const BOX_DEPTH = 205 // ~2 × BD (2 × 102.5mm)
+const WALL_Z = -203.75 // front face at -101.25mm (50mm behind brick back face), back at -306.25mm
 const LERP = 0.05
 
 export default function StructuralWall({ targetOpacity }: Props) {
