@@ -30,7 +30,7 @@
 }
 
 .menu {
-	min-width: 200px;
+	min-width: 220px;
 	padding: 1rem 1.25rem;
 	border-radius: 0.75rem;
 	border: 1px solid rgba(245, 230, 200, 0.25);
@@ -74,4 +74,15 @@
 	width: 100%;
 	accent-color: rgba(245, 180, 80, 0.9);
 	cursor: pointer;
+}
+
+.sectionLabel {
+	font-size: 0.6rem;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	opacity: 0.4;
+	margin-bottom: 0.5rem;
+	margin-top: 0.5rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid rgba(245, 230, 200, 0.15);
 }

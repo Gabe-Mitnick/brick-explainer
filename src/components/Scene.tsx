@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import { SceneState } from '../steps'
 import { CameraConfig } from '../App'
+import { TextureDebugConfig } from '../brickTextures'
 import BrickModel from './BrickModel'
 import StructuralWall from './StructuralWall'
 import MetalTies from './MetalTies'
@@ -46,9 +47,10 @@ function DynamicCamera({ config, targetOrbit }: { config: CameraConfig; targetOr
 interface Props {
 	targetConfig: SceneState
 	cameraConfig: CameraConfig
+	textureDebug: TextureDebugConfig
 }
 
-export default function Scene({ targetConfig, cameraConfig }: Props) {
+export default function Scene({ targetConfig, cameraConfig, textureDebug }: Props) {
 	return (
 		<Canvas style={{ background: 'transparent' }}>
 			<DynamicCamera config={cameraConfig} targetOrbit={targetConfig.cameraOrbit} />
@@ -56,7 +58,7 @@ export default function Scene({ targetConfig, cameraConfig }: Props) {
 			<directionalLight position={[500, 1000, 500]} intensity={1.2} castShadow />
 			<directionalLight position={[-300, -200, -400]} intensity={0.3} color="#7090c0" />
 			<group rotation={[0, 0.3, 0]}>
-				<BrickModel targetConfig={targetConfig} />
+				<BrickModel targetConfig={targetConfig} textureDebug={textureDebug} />
 				<StructuralWall targetOpacity={targetConfig.structuralWallOpacity} />
 				<MetalTies targetOpacity={targetConfig.metalTiesOpacity} />
 			</group>

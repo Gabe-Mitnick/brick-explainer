@@ -1,10 +1,12 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { SceneState } from '../steps'
+import { TextureDebugConfig, DEFAULT_TEXTURE_DEBUG, generateBrickTextures, BrickTextures } from '../brickTextures'
 
 interface Props {
 	targetConfig: SceneState
+	textureDebug: TextureDebugConfig
 }
 
 // Standard UK brick dimensions in mm. Key property: BD + MORTAR = (BW + MORTAR) / 2,
@@ -307,19 +309,30 @@ function pulseIntensity(elapsed: number, delay: number, pulseWidth: number, peri
 	return Math.sin((phase / pulseWidth) * Math.PI)
 }
 
-function makeMaterial(color: string | THREE.Color): THREE.MeshStandardMaterial {
-	return new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05, transparent: true, opacity: 1 })
+const NORMAL_SCALE = new THREE.Vector2(1, 1)
+
+function makeMaterial(color: string | THREE.Color, normalMap: THREE.CanvasTexture): THREE.MeshStandardMaterial {
+	return new THREE.MeshStandardMaterial({
+		color,
+		roughness: 1.0,
+		metalness: 0.05,
+		transparent: true,
+		opacity: 1,
+		normalMap,
+		normalScale: NORMAL_SCALE,
+	})
 }
 
-export default function BrickModel({ targetConfig }: Props) {
+export default function BrickModel({ targetConfig, textureDebug }: Props) {
+	const textureRef = useRef<BrickTextures>(generateBrickTextures(textureDebug))
 	const geo = useRef(new THREE.BoxGeometry(BW, BH, BD))
 	// Body material: used for all faces of stretchers, and body faces (top/bottom/sides) of headers
 	const brickMats = useRef<THREE.MeshStandardMaterial[]>(
-		Array.from({ length: MAX_BRICKS }, () => makeMaterial(BASE_COLOR)),
+		Array.from({ length: MAX_BRICKS }, (_, i) => makeMaterial(BASE_COLOR, textureRef.current.maps[i])),
 	)
 	// End material: used for the ±X faces of header bricks (the burnt ends visible on the wall face)
 	const endMats = useRef<THREE.MeshStandardMaterial[]>(
-		Array.from({ length: MAX_BRICKS }, () => makeMaterial(BASE_COLOR)),
+		Array.from({ length: MAX_BRICKS }, (_, i) => makeMaterial(BASE_COLOR, textureRef.current.maps[i])),
 	)
 	// 6-element material array for header bricks: [right(+X), left(-X), top, bottom, front(+Z), back(-Z)]
 	// After 90° Y-rotation, the ±X faces become the ±Z wall faces — the visible ends.
@@ -335,6 +348,31 @@ export default function BrickModel({ targetConfig }: Props) {
 	)
 	const lastIsHeader = useRef<boolean[]>(Array(MAX_BRICKS).fill(false))
 
+	const skipFirstTextureRegen = useRef(true)
+	useEffect(() => {
+		if (skipFirstTextureRegen.current) {
+			skipFirstTextureRegen.current = false
+			return
+		}
+		const oldTextures = textureRef.current
+		const newTextures = generateBrickTextures(textureDebug)
+		textureRef.current = newTextures
+		for (let i = 0; i < MAX_BRICKS; i++) {
+			brickMats.current[i].normalMap = newTextures.maps[i]
+			brickMats.current[i].needsUpdate = true
+			endMats.current[i].normalMap = newTextures.maps[i]
+			endMats.current[i].needsUpdate = true
+		}
+		for (const map of oldTextures.maps) map.dispose()
+		oldTextures.atlas.dispose()
+	}, [textureDebug.noiseStrength, textureDebug.noiseFrequency, textureDebug.pitOffset])
+
+	useEffect(() => {
+		return () => {
+			for (const map of textureRef.current.maps) map.dispose()
+			textureRef.current.atlas.dispose()
+		}
+	}, [])
 
 	const defs = useMemo(() => getBrickDefs(targetConfig), [targetConfig])
 

@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { CameraConfig } from '../App'
+import { TextureDebugConfig } from '../brickTextures'
 import styles from '../styles/debugMenu.module.css'
 
 interface Props {
-	config: CameraConfig
-	onChange: (config: CameraConfig) => void
+	cameraConfig: CameraConfig
+	onCameraChange: (config: CameraConfig) => void
+	textureDebug: TextureDebugConfig
+	onTextureChange: (config: TextureDebugConfig) => void
 }
 
 interface SliderRowProps {
@@ -37,7 +40,7 @@ function SliderRow({ label, value, min, max, step, current, onSlide }: SliderRow
 	)
 }
 
-export default function DebugMenu({ config, onChange }: Props) {
+export default function DebugMenu({ cameraConfig, onCameraChange, textureDebug, onTextureChange }: Props) {
 	const [open, setOpen] = useState(false)
 	const containerRef = useRef<HTMLDivElement>(null)
 
@@ -60,21 +63,49 @@ export default function DebugMenu({ config, onChange }: Props) {
 					<div className={styles.title}>Debug</div>
 					<SliderRow
 						label="FOV"
-						value={config.fov === 0 ? 'Orthographic' : `${config.fov}°`}
+						value={cameraConfig.fov === 0 ? 'Orthographic' : `${cameraConfig.fov}°`}
 						min={0}
 						max={90}
 						step={1}
-						current={config.fov}
-						onSlide={(fov) => onChange({ ...config, fov })}
+						current={cameraConfig.fov}
+						onSlide={(fov) => onCameraChange({ ...cameraConfig, fov })}
 					/>
 					<SliderRow
 						label="Zoom"
-						value={config.zoom}
+						value={cameraConfig.zoom}
 						min={0.1}
 						max={5}
 						step={0.05}
-						current={config.zoom}
-						onSlide={(zoom) => onChange({ ...config, zoom })}
+						current={cameraConfig.zoom}
+						onSlide={(zoom) => onCameraChange({ ...cameraConfig, zoom })}
+					/>
+					<div className={styles.sectionLabel}>Texture</div>
+					<SliderRow
+						label="Bump depth"
+						value={textureDebug.noiseStrength.toFixed(1)}
+						min={0.5}
+						max={10}
+						step={0.5}
+						current={textureDebug.noiseStrength}
+						onSlide={(noiseStrength) => onTextureChange({ ...textureDebug, noiseStrength })}
+					/>
+					<SliderRow
+						label="Bump freq"
+						value={textureDebug.noiseFrequency.toFixed(1)}
+						min={1}
+						max={50}
+						step={0.5}
+						current={textureDebug.noiseFrequency}
+						onSlide={(noiseFrequency) => onTextureChange({ ...textureDebug, noiseFrequency })}
+					/>
+					<SliderRow
+						label="Pit offset"
+						value={textureDebug.pitOffset.toFixed(2)}
+						min={0}
+						max={1.5}
+						step={0.05}
+						current={textureDebug.pitOffset}
+						onSlide={(pitOffset) => onTextureChange({ ...textureDebug, pitOffset })}
 					/>
 				</div>
 			)}
