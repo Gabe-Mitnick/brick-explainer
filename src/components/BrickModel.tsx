@@ -47,9 +47,28 @@ function seededRand(seed: number): number {
 	return x - Math.floor(x)
 }
 
-const BASE_COLOR = new THREE.Color('#b45c2a')
+const BASE_COLOR = new THREE.Color('#b4532a')
 const HIGHLIGHT_COLOR = new THREE.Color('#e8a050')
-const HEADER_DARK_COLOR = new THREE.Color('#7e421a')
+
+const HEADER_LIGHTNESS_FACTOR = 0.6
+
+const COLOR_HUE_VARIATION = 1 / 360 // ±1° in 0–1 HSL space
+const COLOR_LIGHTNESS_VARIATION = 0.05 // ±5%
+
+// Per-brick base and darkened-header colors — computed once at module load from deterministic seeds
+const BRICK_BASE_COLORS: THREE.Color[] = []
+const BRICK_DARKENED_COLORS: THREE.Color[] = []
+{
+	const hsl = { h: 0, s: 0, l: 0 }
+	BASE_COLOR.getHSL(hsl)
+	for (let i = 0; i < MAX_BRICKS; i++) {
+		const h = ((hsl.h + (seededRand(i * 13 + 1) - 0.5) * 2 * COLOR_HUE_VARIATION) % 1 + 1) % 1
+		const l = Math.max(0, Math.min(1, hsl.l + (seededRand(i * 17 + 3) - 0.5) * 2 * COLOR_LIGHTNESS_VARIATION))
+		BRICK_BASE_COLORS.push(new THREE.Color().setHSL(h, hsl.s, l))
+		BRICK_DARKENED_COLORS.push(new THREE.Color().setHSL(h, hsl.s, l * HEADER_LIGHTNESS_FACTOR))
+	}
+}
+
 const HEADER_WAVE_DURATION_MS = 1500
 
 // Pulse timing: STEP = ms between adjacent pulse starts, WIDTH = ms for one bell (> STEP → overlap)
@@ -315,6 +334,7 @@ export default function BrickModel({ targetConfig }: Props) {
 		]),
 	)
 	const lastIsHeader = useRef<boolean[]>(Array(MAX_BRICKS).fill(false))
+
 
 	const defs = useMemo(() => getBrickDefs(targetConfig), [targetConfig])
 
@@ -615,13 +635,15 @@ export default function BrickModel({ targetConfig }: Props) {
 			}
 
 			// Body faces always use normal brick color
-			brickMats.current[i].color.copy(BASE_COLOR).lerp(HIGHLIGHT_COLOR, intensity)
+			brickMats.current[i].color.copy(BRICK_BASE_COLORS[i]).lerp(HIGHLIGHT_COLOR, intensity)
 			brickMats.current[i].opacity = lerpedOpacity.current
 
 			// End faces: only updated for header bricks (non-headers never use endMats[i])
 			if (isHeader) {
 				const endBaseColor =
-					targetConfig.headerDarkenProgress > 0 && target!.x <= waveThreshold ? HEADER_DARK_COLOR : BASE_COLOR
+					targetConfig.headerDarkenProgress > 0 && target!.x <= waveThreshold
+						? BRICK_DARKENED_COLORS[i]
+						: BRICK_BASE_COLORS[i]
 				endMats.current[i].color.copy(endBaseColor).lerp(HIGHLIGHT_COLOR, intensity)
 				endMats.current[i].opacity = lerpedOpacity.current
 			}
