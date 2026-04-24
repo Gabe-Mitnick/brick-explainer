@@ -9,13 +9,15 @@ interface Props {
 const BD = 102.5
 const BRICK_BACK_Z = -BD / 2 // -51.25mm — back face of single-wythe brick
 const CONCRETE_FRONT_Z = -101.25 // front face of ConcreteWall (center -203.75 + half-depth 102.5)
-const TIE_LENGTH = Math.abs(CONCRETE_FRONT_Z - BRICK_BACK_Z) // 50mm
-const TIE_Z_CENTER = (BRICK_BACK_Z + CONCRETE_FRONT_Z) / 2 // -76.25mm
+const GAP = Math.abs(CONCRETE_FRONT_Z - BRICK_BACK_Z) // 50mm — full brick-to-wall gap
+const TIE_END_Z = BRICK_BACK_Z - GAP * 0.75 // extend 75% of the way to wall surface
+const TIE_LENGTH = Math.abs(TIE_END_Z - BRICK_BACK_Z) // 37.5mm
+const TIE_Z_CENTER = (BRICK_BACK_Z + TIE_END_Z) / 2 // -70mm
 
-const RIBBON_WIDTH = 20 // mm — ribbon width along X
-const RIBBON_THICK = 2  // mm — ribbon thickness along Y
-const WAVE_AMP = 5      // mm — sine wave amplitude (peak-to-neutral)
-const WAVE_LEN = 15     // mm — wavelength
+const RIBBON_WIDTH = 30  // mm — ribbon width along X
+const RIBBON_THICK = 2   // mm — ribbon thickness along Y
+const WAVE_AMP = 3.5     // mm — sine wave amplitude (peak-to-neutral)
+const WAVE_LEN = 22.5    // mm — wavelength
 const SEGS_PER_WAVE = 12
 const LERP = 0.05
 
