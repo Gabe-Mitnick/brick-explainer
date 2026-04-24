@@ -638,7 +638,7 @@ export default function BrickModel({ targetConfig, textureDebug, geometryDebug }
 
 			if (target && fallWaveStart.current !== null) {
 				const elapsed = now - fallWaveStart.current
-				const isFrontWythe = target.z < 0
+				const isFrontWythe = target.z > 0
 				const extraDelay = wytheCascadeStagger.current && isFrontWythe ? WYTHE_STAGGER_MS : 0
 				const progress = cascadeProgress(elapsed, row, col, extraDelay)
 				ty = target.y + (1 - easeIn(progress)) * FALL_HEIGHT
