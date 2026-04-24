@@ -9,10 +9,10 @@ interface Props {
 const BD = 102.5
 const BRICK_FRONT_Z = BD / 2  // +51.25mm — camera-facing front face of brick
 const CONCRETE_FRONT_Z = -101.25 // front face of ConcreteWall (center -203.75 + half-depth 102.5)
-const TIE_START_Z = BRICK_FRONT_Z - 0.75 * BD // -25.625mm — 3/4 BD inside brick from front face
+const TIE_START_Z = BRICK_FRONT_Z - 0.25 * BD // +25.625mm — 1/4 BD inside brick from front face
 const TIE_END_Z = CONCRETE_FRONT_Z // -101.25mm
-const TIE_LENGTH = Math.abs(TIE_END_Z - TIE_START_Z) // ~75.625mm
-const TIE_Z_CENTER = (TIE_START_Z + TIE_END_Z) / 2 // ~-63.4375mm
+const TIE_LENGTH = Math.abs(TIE_END_Z - TIE_START_Z) // ~126.875mm
+const TIE_Z_CENTER = (TIE_START_Z + TIE_END_Z) / 2 // ~-37.8125mm
 
 const RIBBON_WIDTH = 30  // mm — ribbon width along X
 const RIBBON_THICK = 2   // mm — ribbon thickness along Y
