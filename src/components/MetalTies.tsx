@@ -21,8 +21,11 @@ const WAVE_LEN = 22.5    // mm — wavelength
 const SEGS_PER_WAVE = 12
 const LERP = 0.05
 
+// Mortar joint Y centres for a 5-row wall (row centres: -150, -75, 0, 75, 150).
+// Joint between rows r and r+1: rowCentre + BH/2 + MORTAR/2 = rowCentre + 37.5
+// Outer joints: -150+37.5=-112.5 and 75+37.5=112.5
 const X_POSITIONS = [-450, 0, 450]
-const Y_POSITIONS = [-80, 80]
+const Y_POSITIONS = [-112.5, 112.5]
 
 const TIES = X_POSITIONS.flatMap((x, xi) => Y_POSITIONS.map((y, yi) => ({ x, y, key: xi * Y_POSITIONS.length + yi })))
 
