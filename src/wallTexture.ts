@@ -2,15 +2,24 @@ import * as THREE from 'three'
 
 const CELL_SIZE = 256
 
-// Noise frequency in cycles per tile. Must be an integer for the texture to tile seamlessly.
-// Each tile represents ~150mm of wall; at NOISE_FREQ=12 that's ~12.5mm per grain,
-// close to coarse concrete aggregate size.
-const NOISE_FREQ = 12
-const NOISE_STRENGTH = 2.5
-const OCTAVES = 3
-// Pit surface: surface is flat at height 1, with pits where noise exceeds this threshold.
-// Higher = fewer/shallower pits; lower = more/deeper pits. Same model as brickTextures.ts.
-const PIT_OFFSET = 0.6
+export interface WallTextureConfig {
+	noiseFreq: number    // cycles per tile — must be an integer for seamless tiling
+	noiseStrength: number // depth of normal-map bumps
+	octaves: number      // fractal octaves (integer)
+	pitOffset: number    // pit surface threshold: higher = fewer/shallower pits
+}
+
+export const DEFAULT_WALL_TEXTURE: WallTextureConfig = {
+	noiseFreq: 12,
+	noiseStrength: 2.5,
+	octaves: 3,
+	pitOffset: 0.6,
+}
+
+// Texture tiles every ~150mm. Repeat counts derived from wall dimensions.
+// These live here so StructuralWall can import them without re-deriving from geometry constants.
+export const WALL_REPEAT_X = 10 // ≈ WALL_WIDTH / 150
+export const WALL_REPEAT_Y = 2  // ≈ WALL_HEIGHT / 150
 
 function hash(ix: number, iy: number): number {
 	let h = (Math.imul(ix, 1664525) + Math.imul(iy, 1013904223)) | 0
@@ -20,40 +29,39 @@ function hash(ix: number, iy: number): number {
 	return (h >>> 0) / 4294967296
 }
 
-// Tileable value noise: wraps at period `period` in both axes so the texture repeats seamlessly.
+// Tileable value noise: wraps at period `period` so the texture repeats seamlessly.
+// period must be a positive integer for the wrap to produce consistent grid values.
 function tiledValueNoise(x: number, y: number, period: number): number {
 	const ix = Math.floor(x), iy = Math.floor(y)
 	const fx = x - ix, fy = y - iy
 	const ux = fx * fx * (3 - 2 * fx)
 	const uy = fy * fy * (3 - 2 * fy)
-	// Wrap grid coordinates so hash(0,...) == hash(period,...) etc.
 	const p = period
 	const a = hash(ix % p, iy % p), b = hash((ix + 1) % p, iy % p)
 	const c = hash(ix % p, (iy + 1) % p), d = hash((ix + 1) % p, (iy + 1) % p)
 	return a + (b - a) * ux + (c - a) * uy + (d - b - c + a) * ux * uy
 }
 
-function fractalNoise(x: number, y: number): number {
+function fractalNoise(x: number, y: number, config: WallTextureConfig): number {
 	let val = 0, amp = 0.5, freq = 1
-	for (let i = 0; i < OCTAVES; i++) {
-		// Each octave tiles at period = NOISE_FREQ * freq (still an integer since both are powers of 2 × NOISE_FREQ)
-		val += tiledValueNoise(x * freq, y * freq, NOISE_FREQ * freq) * amp
+	for (let i = 0; i < config.octaves; i++) {
+		val += tiledValueNoise(x * freq, y * freq, config.noiseFreq * freq) * amp
 		amp *= 0.5
 		freq *= 2
 	}
 	return val
 }
 
-function sampleHeight(px: number, py: number): number {
-	const noise = fractalNoise((px / CELL_SIZE) * NOISE_FREQ, (py / CELL_SIZE) * NOISE_FREQ)
-	return 1.0 - Math.max(0.0, noise - PIT_OFFSET)
+function sampleHeight(px: number, py: number, config: WallTextureConfig): number {
+	const noise = fractalNoise((px / CELL_SIZE) * config.noiseFreq, (py / CELL_SIZE) * config.noiseFreq, config)
+	return 1.0 - Math.max(0.0, noise - config.pitOffset)
 }
 
 /**
  * Generates a tileable procedural concrete normal map (256×256).
- * The texture tiles seamlessly and is designed to repeat every ~150mm of wall surface.
+ * noiseFreq must be a positive integer for seamless tiling.
  */
-export function generateWallNormalMap(): THREE.CanvasTexture {
+export function generateWallNormalMap(config: WallTextureConfig): THREE.CanvasTexture {
 	const canvas = document.createElement('canvas')
 	canvas.width = CELL_SIZE
 	canvas.height = CELL_SIZE
@@ -61,13 +69,12 @@ export function generateWallNormalMap(): THREE.CanvasTexture {
 	const imageData = ctx.createImageData(CELL_SIZE, CELL_SIZE)
 	const data = imageData.data
 
-	const h = (px: number, py: number) => sampleHeight(px, py)
+	const h = (px: number, py: number) => sampleHeight(px, py, config)
 
 	for (let py = 0; py < CELL_SIZE; py++) {
 		for (let px = 0; px < CELL_SIZE; px++) {
-			// Finite-difference gradient — same convention as brickTextures.ts
-			const dx = (h(px + 1, py) - h(px - 1, py)) * NOISE_STRENGTH
-			const dy = (h(px, py + 1) - h(px, py - 1)) * NOISE_STRENGTH
+			const dx = (h(px + 1, py) - h(px - 1, py)) * config.noiseStrength
+			const dy = (h(px, py + 1) - h(px, py - 1)) * config.noiseStrength
 			const dz = 1.0
 			const len = Math.sqrt(dx * dx + dy * dy + dz * dz)
 
@@ -83,5 +90,6 @@ export function generateWallNormalMap(): THREE.CanvasTexture {
 	const texture = new THREE.CanvasTexture(canvas)
 	texture.wrapS = THREE.RepeatWrapping
 	texture.wrapT = THREE.RepeatWrapping
+	texture.repeat.set(WALL_REPEAT_X, WALL_REPEAT_Y)
 	return texture
 }

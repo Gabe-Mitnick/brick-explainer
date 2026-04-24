@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CameraConfig } from '../App'
 import { TextureDebugConfig } from '../brickTextures'
 import { BrickGeometryConfig } from '../brickGeometry'
+import { WallTextureConfig } from '../wallTexture'
 import styles from '../styles/debugMenu.module.css'
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
 	onTextureChange: (config: TextureDebugConfig) => void
 	geometryDebug: BrickGeometryConfig
 	onGeometryChange: (config: BrickGeometryConfig) => void
+	wallTextureConfig: WallTextureConfig
+	onWallTextureChange: (config: WallTextureConfig) => void
 }
 
 interface SliderRowProps {
@@ -43,7 +46,7 @@ function SliderRow({ label, value, min, max, step, current, onSlide }: SliderRow
 	)
 }
 
-export default function DebugMenu({ cameraConfig, onCameraChange, textureDebug, onTextureChange, geometryDebug, onGeometryChange }: Props) {
+export default function DebugMenu({ cameraConfig, onCameraChange, textureDebug, onTextureChange, geometryDebug, onGeometryChange, wallTextureConfig, onWallTextureChange }: Props) {
 	const [open, setOpen] = useState(false)
 	const containerRef = useRef<HTMLDivElement>(null)
 
@@ -119,6 +122,43 @@ export default function DebugMenu({ cameraConfig, onCameraChange, textureDebug, 
 						step={0.5}
 						current={geometryDebug.radius}
 						onSlide={(radius) => onGeometryChange({ ...geometryDebug, radius })}
+					/>
+					<div className={styles.sectionLabel}>Wall Texture</div>
+					<SliderRow
+						label="Bump freq"
+						value={wallTextureConfig.noiseFreq}
+						min={1}
+						max={24}
+						step={1}
+						current={wallTextureConfig.noiseFreq}
+						onSlide={(noiseFreq) => onWallTextureChange({ ...wallTextureConfig, noiseFreq })}
+					/>
+					<SliderRow
+						label="Bump depth"
+						value={wallTextureConfig.noiseStrength.toFixed(1)}
+						min={0.5}
+						max={10}
+						step={0.5}
+						current={wallTextureConfig.noiseStrength}
+						onSlide={(noiseStrength) => onWallTextureChange({ ...wallTextureConfig, noiseStrength })}
+					/>
+					<SliderRow
+						label="Octaves"
+						value={wallTextureConfig.octaves}
+						min={1}
+						max={5}
+						step={1}
+						current={wallTextureConfig.octaves}
+						onSlide={(octaves) => onWallTextureChange({ ...wallTextureConfig, octaves })}
+					/>
+					<SliderRow
+						label="Pit offset"
+						value={wallTextureConfig.pitOffset.toFixed(2)}
+						min={0}
+						max={1.5}
+						step={0.05}
+						current={wallTextureConfig.pitOffset}
+						onSlide={(pitOffset) => onWallTextureChange({ ...wallTextureConfig, pitOffset })}
 					/>
 				</div>
 			)}

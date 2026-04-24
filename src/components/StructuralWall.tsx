@@ -1,10 +1,11 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { generateWallNormalMap } from '../wallTexture'
+import { generateWallNormalMap, WallTextureConfig } from '../wallTexture'
 
 interface Props {
 	targetOpacity: number
+	wallTextureConfig: WallTextureConfig
 }
 
 const WALL_WIDTH = 1452.5 // matches brick wall extent: 5×(BW+MORTAR) + (BW+MORTAR)/2 + BW, cols=6
@@ -13,16 +14,9 @@ const BOX_DEPTH = 205 // ~2 × BD (2 × 102.5mm)
 const WALL_Z = -203.75 // front face at -101.25mm (50mm behind brick back face), back at -306.25mm
 const LERP = 0.05
 
-// Texture tiles every ~150mm. Repeat counts derived from wall dimensions.
-const REPEAT_X = Math.round(WALL_WIDTH / 150)  // ≈ 10
-const REPEAT_Y = Math.round(WALL_HEIGHT / 150)  // ≈ 2
-
-export default function StructuralWall({ targetOpacity }: Props) {
+export default function StructuralWall({ targetOpacity, wallTextureConfig }: Props) {
 	const normalMap = useRef<THREE.CanvasTexture | null>(null)
-	if (!normalMap.current) {
-		normalMap.current = generateWallNormalMap()
-		normalMap.current.repeat.set(REPEAT_X, REPEAT_Y)
-	}
+	if (!normalMap.current) normalMap.current = generateWallNormalMap(wallTextureConfig)
 
 	const matRef = useRef(
 		new THREE.MeshStandardMaterial({
@@ -37,6 +31,24 @@ export default function StructuralWall({ targetOpacity }: Props) {
 		}),
 	)
 	const geoRef = useRef(new THREE.BoxGeometry(WALL_WIDTH, WALL_HEIGHT, BOX_DEPTH))
+
+	const skipFirstRegen = useRef(true)
+	useEffect(() => {
+		if (skipFirstRegen.current) {
+			skipFirstRegen.current = false
+			return
+		}
+		const oldMap = normalMap.current!
+		const newMap = generateWallNormalMap(wallTextureConfig)
+		normalMap.current = newMap
+		matRef.current.normalMap = newMap
+		matRef.current.needsUpdate = true
+		oldMap.dispose()
+	}, [wallTextureConfig.noiseFreq, wallTextureConfig.noiseStrength, wallTextureConfig.octaves, wallTextureConfig.pitOffset])
+
+	useEffect(() => {
+		return () => normalMap.current?.dispose()
+	}, [])
 
 	useFrame(() => {
 		matRef.current.opacity += (targetOpacity - matRef.current.opacity) * LERP
