@@ -11,7 +11,7 @@ export interface SceneState {
 	highlightedCourses: number[] // rows lit with highlight material (static)
 	highlightWaveActive: boolean // auto-sequence course highlights on entry
 	highlightColWaveActive: boolean // auto-sequence column highlights on entry
-	structuralWallOpacity: number // 0 = hidden, 1 = fully visible
+	concreteWallOpacity: number // 0 = hidden, 1 = fully visible
 	metalTiesOpacity: number // 0 = hidden, 1 = fully visible
 	cameraOrbit: number // radians; rotates camera around Y to look behind wall
 	collapseProgress: number // 0 = standing, 1 = bricks scattered (collapsed)
@@ -33,7 +33,7 @@ const BASE = {
 	highlightedCourses: [] as number[],
 	highlightWaveActive: false,
 	highlightColWaveActive: false,
-	structuralWallOpacity: 0,
+	concreteWallOpacity: 0,
 	metalTiesOpacity: 0,
 	cameraOrbit: 0,
 	collapseProgress: 0,
@@ -85,18 +85,18 @@ export const moments: Moment[] = [
 	{
 		isSubstep: false,
 		text: "Stretcher bond is often used in modern buildings as a facade. Behind the facade is a structural wall made of wood or reinforced concrete. That's what really holds the building up.",
-		scene: { ...S1, structuralWallOpacity: 1 },
+		scene: { ...S1, concreteWallOpacity: 1 },
 	},
 	// Moment 5–6: cavity wall — bricks become semi-transparent, structural wall visible from front
 	{
 		isSubstep: false,
 		text: "In between the bricks and the structural wall, there's often a gap, sometimes filled with insulation or sometimes left empty. The gap provides moisture control and insulation. This is called a *cavity wall*.",
-		scene: { ...S1, brickOpacity: 0.4, structuralWallOpacity: 1 },
+		scene: { ...S1, brickOpacity: 0.4, concreteWallOpacity: 1 },
 	},
 	{
 		isSubstep: true,
 		text: 'The bricks are connected to the structural wall with metal ties.',
-		scene: { ...S1, brickOpacity: 0.4, structuralWallOpacity: 1, metalTiesOpacity: 1 },
+		scene: { ...S1, brickOpacity: 0.4, concreteWallOpacity: 1, metalTiesOpacity: 1 },
 	},
 	// Moment 7: restore opacity — traditional masonry, no modern aids
 	{

@@ -8,7 +8,7 @@ interface Props {
 
 const BD = 102.5
 const BRICK_BACK_Z = -BD / 2 // -51.25mm — back face of single-wythe brick
-const WALL_Z = -280 // matches StructuralWall.tsx front face area
+const WALL_Z = -280 // matches ConcreteWall.tsx front face area
 const TIE_LENGTH = Math.abs(WALL_Z - BRICK_BACK_Z) // 228.75mm
 const TIE_Z_CENTER = (BRICK_BACK_Z + WALL_Z) / 2 // -165.625mm
 const TIE_RADIUS = 4

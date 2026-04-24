@@ -21,7 +21,7 @@ function makeGeo(radius: number): THREE.BufferGeometry {
 	return new RoundedBoxGeometry(WALL_WIDTH, WALL_HEIGHT, BOX_DEPTH, ROUND_SEGMENTS, r)
 }
 
-export default function StructuralWall({ targetOpacity, wallConfig }: Props) {
+export default function ConcreteWall({ targetOpacity, wallConfig }: Props) {
 	const normalMap = useRef<THREE.CanvasTexture | null>(null)
 	if (!normalMap.current) normalMap.current = generateWallNormalMap(wallConfig)
 
