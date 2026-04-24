@@ -556,8 +556,8 @@ export default function BrickModel({ targetConfig, textureDebug, geometryDebug }
 		prevSplitProgress.current = targetConfig.splitProgress
 
 		// --- Wythe cascade rising-edge detection ---
-		// Fires AFTER collapse/split snaps so bricks are at their defs before the cascade
-		// overrides y to FALL_HEIGHT above; back wythe (z ≥ 0) falls first, front wythe delayed.
+		// Placed after collapse/split clear: bricks are at their defs when the cascade
+		// overrides y to FALL_HEIGHT above. Back wythe (z ≤ 0) falls first, front (z > 0) delayed.
 		if (targetConfig.wytheCascadeTrigger && !prevWytheCascadeTrigger.current) {
 			fallWaveStart.current = now
 			wytheCascadeStagger.current = true
@@ -616,8 +616,9 @@ export default function BrickModel({ targetConfig, textureDebug, geometryDebug }
 			fallWaveStart.current = null
 		}
 
-		// Hoist wave threshold out of the per-brick loop — it's constant for the whole frame
+		// Hoist per-frame constants out of the brick loop
 		const waveThreshold = xRange.min + headerWaveInternalProgress.current * (xRange.max - xRange.min)
+		const cascadeStagger = wytheCascadeStagger.current
 
 		// --- Update each brick ---
 		for (let i = 0; i < MAX_BRICKS; i++) {
@@ -639,7 +640,7 @@ export default function BrickModel({ targetConfig, textureDebug, geometryDebug }
 			if (target && fallWaveStart.current !== null) {
 				const elapsed = now - fallWaveStart.current
 				const isFrontWythe = target.z > 0
-				const extraDelay = wytheCascadeStagger.current && isFrontWythe ? WYTHE_STAGGER_MS : 0
+				const extraDelay = cascadeStagger && isFrontWythe ? WYTHE_STAGGER_MS : 0
 				const progress = cascadeProgress(elapsed, row, col, extraDelay)
 				ty = target.y + (1 - easeIn(progress)) * FALL_HEIGHT
 				directY = true
