@@ -8,11 +8,12 @@ interface Props {
 
 const BD = 102.5
 const BW = 215 // mm — brick stretcher length
-const BRICK_BACK_Z = -BD / 2 // -51.25mm — back face of single-wythe brick
+const BRICK_FRONT_Z = -BD / 2 // -51.25mm — face of brick that faces the air gap
 const CONCRETE_FRONT_Z = -101.25 // front face of ConcreteWall (center -203.75 + half-depth 102.5)
-const TIE_END_Z = CONCRETE_FRONT_Z - 0.75 * BW // embed 3/4 brick-width into concrete (-262.5mm)
-const TIE_LENGTH = Math.abs(TIE_END_Z - BRICK_BACK_Z) // ~211.25mm
-const TIE_Z_CENTER = (BRICK_BACK_Z + TIE_END_Z) / 2 // ~-156.875mm
+const TIE_START_Z = BRICK_FRONT_Z + 0.25 * BW // +2.5mm — anchor point inside brick
+const TIE_END_Z = CONCRETE_FRONT_Z // -101.25mm
+const TIE_LENGTH = Math.abs(TIE_END_Z - TIE_START_Z) // ~103.75mm
+const TIE_Z_CENTER = (TIE_START_Z + TIE_END_Z) / 2 // ~-49.375mm
 
 const RIBBON_WIDTH = 30  // mm — ribbon width along X
 const RIBBON_THICK = 2   // mm — ribbon thickness along Y
