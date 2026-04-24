@@ -1,5 +1,6 @@
 :root {
 	--col-width: 800px;
+	--col-inset: max(1.5rem, calc(50% - var(--col-width) / 2));
 }
 
 .container {
@@ -18,8 +19,8 @@
 .textLayer {
 	position: absolute;
 	top: 0;
-	left: 0;
-	right: 0;
+	left: var(--col-inset);
+	right: var(--col-inset);
 	height: 50vh;
 	z-index: 1;
 	overflow: hidden;
@@ -29,19 +30,7 @@
 .controlsLayer {
 	position: fixed;
 	bottom: 2rem;
-	left: 1.5rem;
-	right: 1.5rem;
+	left: var(--col-inset);
+	right: var(--col-inset);
 	z-index: 2;
-}
-
-@media (min-width: 900px) {
-	:root {
-		--col-inset: calc(50% - var(--col-width) / 2);
-	}
-
-	.textLayer,
-	.controlsLayer {
-		left: var(--col-inset);
-		right: var(--col-inset);
-	}
 }
