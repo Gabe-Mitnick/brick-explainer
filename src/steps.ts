@@ -91,12 +91,12 @@ export const moments: Moment[] = [
 	{
 		isSubstep: false,
 		text: "In between the bricks and the structural wall, there's often a gap, sometimes filled with insulation or sometimes left empty. The gap provides moisture control and insulation. This is called a *cavity wall*.",
-		scene: { ...S1, brickOpacity: 0.4, concreteWallOpacity: 1 },
+		scene: { ...S1, brickOpacity: 0.2, concreteWallOpacity: 1 },
 	},
 	{
 		isSubstep: true,
 		text: 'The bricks are connected to the structural wall with metal ties.',
-		scene: { ...S1, brickOpacity: 0.4, concreteWallOpacity: 1, metalTiesOpacity: 1 },
+		scene: { ...S1, brickOpacity: 0.2, concreteWallOpacity: 1, metalTiesOpacity: 1 },
 	},
 	// Moment 7: restore opacity — traditional masonry, no modern aids
 	{
