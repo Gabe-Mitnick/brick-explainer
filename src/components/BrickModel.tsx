@@ -688,7 +688,7 @@ export default function BrickModel({ targetConfig, textureDebug, geometryDebug }
 
 			// Per-brick smooth highlight intensity
 
-			// renderOrder layers: wall=0, ties=1, bottom-row bricks=2, top-row bricks=rows+1.
+			// renderOrder layers: ties=0, wall=1, bottom-row bricks=2, top-row bricks=rows+1.
 			// Upper rows render last (on top), guaranteeing correct visual layering for the
 			// off-axis orthographic camera regardless of clip-space sort order.
 			const newRenderOrder = target !== null ? row + 2 : 0

@@ -84,6 +84,7 @@ export default function ConcreteWall({ targetOpacity, wallConfig }: Props) {
 		<mesh
 			ref={meshRef}
 			position={[0, 0, WALL_Z]}
+			renderOrder={1} // layer 1: after ties (0), before bricks (row+2)
 			geometry={geoRef.current!}
 			material={matRef.current}
 		/>
