@@ -84,7 +84,7 @@ export default function ConcreteWall({ targetOpacity, wallConfig }: Props) {
 		<mesh
 			ref={meshRef}
 			position={[0, 0, WALL_Z]}
-geometry={geoRef.current!}
+			geometry={geoRef.current!}
 			material={matRef.current}
 		/>
 	)

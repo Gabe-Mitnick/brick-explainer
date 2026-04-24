@@ -28,16 +28,14 @@ function hash(ix: number, iy: number): number {
 	return (h >>> 0) / 4294967296
 }
 
-// Tileable value noise: wraps at period `period` so the texture repeats seamlessly.
 // period must be a positive integer for the wrap to produce consistent grid values.
 function tiledValueNoise(x: number, y: number, period: number): number {
 	const ix = Math.floor(x), iy = Math.floor(y)
 	const fx = x - ix, fy = y - iy
 	const ux = fx * fx * (3 - 2 * fx)
 	const uy = fy * fy * (3 - 2 * fy)
-	const p = period
-	const a = hash(ix % p, iy % p), b = hash((ix + 1) % p, iy % p)
-	const c = hash(ix % p, (iy + 1) % p), d = hash((ix + 1) % p, (iy + 1) % p)
+	const a = hash(ix % period, iy % period), b = hash((ix + 1) % period, iy % period)
+	const c = hash(ix % period, (iy + 1) % period), d = hash((ix + 1) % period, (iy + 1) % period)
 	return a + (b - a) * ux + (c - a) * uy + (d - b - c + a) * ux * uy
 }
 
@@ -68,12 +66,19 @@ export function generateWallNormalMap(config: WallConfig): THREE.CanvasTexture {
 	const imageData = ctx.createImageData(CELL_SIZE, CELL_SIZE)
 	const data = imageData.data
 
-	const h = (px: number, py: number) => sampleHeight(px, py, config)
+	// Pre-compute heights so each pixel is sampled once instead of 4× during normal derivation.
+	const heights = new Float32Array(CELL_SIZE * CELL_SIZE)
+	for (let py = 0; py < CELL_SIZE; py++)
+		for (let px = 0; px < CELL_SIZE; px++)
+			heights[py * CELL_SIZE + px] = sampleHeight(px, py, config)
+
+	const get = (px: number, py: number) =>
+		heights[((py % CELL_SIZE + CELL_SIZE) % CELL_SIZE) * CELL_SIZE + ((px % CELL_SIZE + CELL_SIZE) % CELL_SIZE)]
 
 	for (let py = 0; py < CELL_SIZE; py++) {
 		for (let px = 0; px < CELL_SIZE; px++) {
-			const dx = (h(px + 1, py) - h(px - 1, py)) * config.noiseStrength
-			const dy = (h(px, py + 1) - h(px, py - 1)) * config.noiseStrength
+			const dx = (get(px + 1, py) - get(px - 1, py)) * config.noiseStrength
+			const dy = (get(px, py + 1) - get(px, py - 1)) * config.noiseStrength
 			const dz = 1.0
 			const len = Math.sqrt(dx * dx + dy * dy + dz * dz)
 

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -84,6 +84,8 @@ export default function MetalTies({ targetOpacity }: Props) {
 	)
 	const lerpedOpacity = useRef(0)
 	const meshRefs = useRef<(THREE.Mesh | null)[]>([])
+
+	useEffect(() => () => { geoRef.current.dispose() }, [])
 
 	useFrame(() => {
 		lerpedOpacity.current += (targetOpacity - lerpedOpacity.current) * LERP
