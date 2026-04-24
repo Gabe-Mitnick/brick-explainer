@@ -6,7 +6,7 @@ import DebugMenu from './components/DebugMenu'
 import { moments } from './steps'
 import { TextureDebugConfig, DEFAULT_TEXTURE_DEBUG } from './brickTextures'
 import { BrickGeometryConfig, DEFAULT_BRICK_GEOMETRY } from './brickGeometry'
-import { WallTextureConfig, DEFAULT_WALL_TEXTURE } from './wallTexture'
+import { WallConfig, DEFAULT_WALL_CONFIG } from './wallTexture'
 import styles from './styles/app.module.css'
 
 export interface CameraConfig {
@@ -21,7 +21,7 @@ export default function App() {
 	const [cameraConfig, setCameraConfig] = useState<CameraConfig>(DEFAULT_CAMERA)
 	const [textureDebug, setTextureDebug] = useState<TextureDebugConfig>(DEFAULT_TEXTURE_DEBUG)
 	const [geometryDebug, setGeometryDebug] = useState<BrickGeometryConfig>(DEFAULT_BRICK_GEOMETRY)
-	const [wallTextureConfig, setWallTextureConfig] = useState<WallTextureConfig>(DEFAULT_WALL_TEXTURE)
+	const [wallConfig, setWallConfig] = useState<WallConfig>(DEFAULT_WALL_CONFIG)
 
 	const goNext = useCallback(() => setCurrentMoment((s) => Math.min(s + 1, moments.length - 1)), [])
 	const goPrev = useCallback(() => setCurrentMoment((s) => Math.max(s - 1, 0)), [])
@@ -38,7 +38,7 @@ export default function App() {
 	return (
 		<div className={styles.container}>
 			<div className={styles.canvasLayer}>
-				<Scene targetConfig={moments[currentMoment].scene} cameraConfig={cameraConfig} textureDebug={textureDebug} geometryDebug={geometryDebug} wallTextureConfig={wallTextureConfig} />
+				<Scene targetConfig={moments[currentMoment].scene} cameraConfig={cameraConfig} textureDebug={textureDebug} geometryDebug={geometryDebug} wallConfig={wallConfig} />
 			</div>
 			<div className={styles.textLayer}>
 				<TextLayer moments={moments} currentMoment={currentMoment} />
@@ -54,8 +54,8 @@ export default function App() {
 					onTextureChange={setTextureDebug}
 					geometryDebug={geometryDebug}
 					onGeometryChange={setGeometryDebug}
-					wallTextureConfig={wallTextureConfig}
-					onWallTextureChange={setWallTextureConfig}
+					wallConfig={wallConfig}
+					onWallConfigChange={setWallConfig}
 				/>
 			)}
 		</div>

@@ -5,7 +5,7 @@ import { SceneState } from '../steps'
 import { CameraConfig } from '../App'
 import { TextureDebugConfig } from '../brickTextures'
 import { BrickGeometryConfig } from '../brickGeometry'
-import { WallTextureConfig } from '../wallTexture'
+import { WallConfig } from '../wallTexture'
 import BrickModel from './BrickModel'
 import StructuralWall from './StructuralWall'
 import MetalTies from './MetalTies'
@@ -51,10 +51,10 @@ interface Props {
 	cameraConfig: CameraConfig
 	textureDebug: TextureDebugConfig
 	geometryDebug: BrickGeometryConfig
-	wallTextureConfig: WallTextureConfig
+	wallConfig: WallConfig
 }
 
-export default function Scene({ targetConfig, cameraConfig, textureDebug, geometryDebug, wallTextureConfig }: Props) {
+export default function Scene({ targetConfig, cameraConfig, textureDebug, geometryDebug, wallConfig }: Props) {
 	return (
 		<Canvas style={{ background: 'transparent' }}>
 			<DynamicCamera config={cameraConfig} targetOrbit={targetConfig.cameraOrbit} />
@@ -63,7 +63,7 @@ export default function Scene({ targetConfig, cameraConfig, textureDebug, geomet
 			<directionalLight position={[-300, -200, -400]} intensity={0.3} color="#7090c0" />
 			<group rotation={[0, 0.3, 0]}>
 				<BrickModel targetConfig={targetConfig} textureDebug={textureDebug} geometryDebug={geometryDebug} />
-				<StructuralWall targetOpacity={targetConfig.structuralWallOpacity} wallTextureConfig={wallTextureConfig} />
+				<StructuralWall targetOpacity={targetConfig.structuralWallOpacity} wallConfig={wallConfig} />
 				<MetalTies targetOpacity={targetConfig.metalTiesOpacity} />
 			</group>
 		</Canvas>

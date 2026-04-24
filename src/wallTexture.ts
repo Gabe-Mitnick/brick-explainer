@@ -1,25 +1,24 @@
 import * as THREE from 'three'
 
 const CELL_SIZE = 256
+const WALL_REPEAT_X = 10 // ≈ WALL_WIDTH / 150
+const WALL_REPEAT_Y = 2  // ≈ WALL_HEIGHT / 150
 
-export interface WallTextureConfig {
-	noiseFreq: number    // cycles per tile — must be an integer for seamless tiling
+export interface WallConfig {
+	noiseFreq: number     // cycles per tile — must be an integer for seamless tiling
 	noiseStrength: number // depth of normal-map bumps
-	octaves: number      // fractal octaves (integer)
-	pitOffset: number    // pit surface threshold: higher = fewer/shallower pits
+	octaves: number       // fractal octaves (integer)
+	pitOffset: number     // pit surface threshold: higher = fewer/shallower pits
+	radius: number        // mm — edge rounding radius
 }
 
-export const DEFAULT_WALL_TEXTURE: WallTextureConfig = {
-	noiseFreq: 12,
-	noiseStrength: 2.5,
-	octaves: 3,
+export const DEFAULT_WALL_CONFIG: WallConfig = {
+	noiseFreq: 15,
+	noiseStrength: 7,
+	octaves: 4,
 	pitOffset: 0.6,
+	radius: 4,
 }
-
-// Texture tiles every ~150mm. Repeat counts derived from wall dimensions.
-// These live here so StructuralWall can import them without re-deriving from geometry constants.
-export const WALL_REPEAT_X = 10 // ≈ WALL_WIDTH / 150
-export const WALL_REPEAT_Y = 2  // ≈ WALL_HEIGHT / 150
 
 function hash(ix: number, iy: number): number {
 	let h = (Math.imul(ix, 1664525) + Math.imul(iy, 1013904223)) | 0
@@ -42,7 +41,7 @@ function tiledValueNoise(x: number, y: number, period: number): number {
 	return a + (b - a) * ux + (c - a) * uy + (d - b - c + a) * ux * uy
 }
 
-function fractalNoise(x: number, y: number, config: WallTextureConfig): number {
+function fractalNoise(x: number, y: number, config: WallConfig): number {
 	let val = 0, amp = 0.5, freq = 1
 	for (let i = 0; i < config.octaves; i++) {
 		val += tiledValueNoise(x * freq, y * freq, config.noiseFreq * freq) * amp
@@ -52,7 +51,7 @@ function fractalNoise(x: number, y: number, config: WallTextureConfig): number {
 	return val
 }
 
-function sampleHeight(px: number, py: number, config: WallTextureConfig): number {
+function sampleHeight(px: number, py: number, config: WallConfig): number {
 	const noise = fractalNoise((px / CELL_SIZE) * config.noiseFreq, (py / CELL_SIZE) * config.noiseFreq, config)
 	return 1.0 - Math.max(0.0, noise - config.pitOffset)
 }
@@ -61,7 +60,7 @@ function sampleHeight(px: number, py: number, config: WallTextureConfig): number
  * Generates a tileable procedural concrete normal map (256×256).
  * noiseFreq must be a positive integer for seamless tiling.
  */
-export function generateWallNormalMap(config: WallTextureConfig): THREE.CanvasTexture {
+export function generateWallNormalMap(config: WallConfig): THREE.CanvasTexture {
 	const canvas = document.createElement('canvas')
 	canvas.width = CELL_SIZE
 	canvas.height = CELL_SIZE
