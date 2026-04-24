@@ -8,6 +8,9 @@ const CELL_SIZE = 256
 const NOISE_FREQ = 12
 const NOISE_STRENGTH = 2.5
 const OCTAVES = 3
+// Pit surface: surface is flat at height 1, with pits where noise exceeds this threshold.
+// Higher = fewer/shallower pits; lower = more/deeper pits. Same model as brickTextures.ts.
+const PIT_OFFSET = 0.6
 
 function hash(ix: number, iy: number): number {
 	let h = (Math.imul(ix, 1664525) + Math.imul(iy, 1013904223)) | 0
@@ -42,8 +45,8 @@ function fractalNoise(x: number, y: number): number {
 }
 
 function sampleHeight(px: number, py: number): number {
-	// Map pixel coords [0, CELL_SIZE) → noise coords [0, NOISE_FREQ)
-	return fractalNoise((px / CELL_SIZE) * NOISE_FREQ, (py / CELL_SIZE) * NOISE_FREQ)
+	const noise = fractalNoise((px / CELL_SIZE) * NOISE_FREQ, (py / CELL_SIZE) * NOISE_FREQ)
+	return 1.0 - Math.max(0.0, noise - PIT_OFFSET)
 }
 
 /**
