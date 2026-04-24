@@ -35,3 +35,15 @@
 	opacity: 0;
 	pointer-events: none;
 }
+
+@keyframes pulse-yellow {
+	50% {
+		border-color: #e8a050;
+		background: rgba(232, 160, 80, 0.5);
+		box-shadow: 0 0 12px 3px rgba(232, 160, 80, 0.6);
+	}
+}
+
+.pulse {
+	animation: pulse-yellow 1.2s ease-in-out infinite;
+}

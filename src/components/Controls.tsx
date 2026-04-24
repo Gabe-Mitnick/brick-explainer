@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import styles from '../styles/controls.module.css'
 
 interface Props {
@@ -23,6 +24,21 @@ const Chevron = ({ mirrored = false }: { mirrored?: boolean }) => (
 export default function Controls({ currentStep, totalSteps, onPrev, onNext }: Props) {
 	const isFirst = currentStep === 0
 	const isLast = currentStep === totalSteps - 1
+	const [pulsing, setPulsing] = useState(false)
+
+	useEffect(() => {
+		if (currentStep !== 0) {
+			setPulsing(false)
+			return
+		}
+		const timer = setTimeout(() => setPulsing(true), 5000)
+		return () => clearTimeout(timer)
+	}, [currentStep])
+
+	const handleNext = () => {
+		setPulsing(false)
+		onNext()
+	}
 
 	return (
 		<div className={styles.controls}>
@@ -35,8 +51,8 @@ export default function Controls({ currentStep, totalSteps, onPrev, onNext }: Pr
 				<Chevron />
 			</button>
 			<button
-				className={`${styles.btn} ${isLast ? styles.hidden : ''}`}
-				onClick={onNext}
+				className={`${styles.btn} ${isLast ? styles.hidden : ''} ${pulsing ? styles.pulse : ''}`}
+				onClick={handleNext}
 				aria-label="Next"
 				tabIndex={isLast ? -1 : 0}
 			>
