@@ -90,6 +90,7 @@ const ROW_DELAY_MS = 150 // ms between each row starting to fall
 const COL_DELAY_MS = 40 // ms between each column within a row
 const FALL_DURATION_MS = 350 // ms for one brick to travel FALL_HEIGHT to rest
 const FALL_BUFFER_MS = 50 // extra ms after last brick lands before handing off to lerp
+const WYTHE_STAGGER_MS = 800 // ms delay for front wythe in wythe-cascade animation
 
 export interface BrickDef {
 	x: number
@@ -300,8 +301,8 @@ function easeIn(t: number): number {
 	return t * t
 }
 
-function cascadeProgress(elapsed: number, row: number, col: number): number {
-	const delay = row * ROW_DELAY_MS + col * COL_DELAY_MS
+function cascadeProgress(elapsed: number, row: number, col: number, extraDelay = 0): number {
+	const delay = extraDelay + row * ROW_DELAY_MS + col * COL_DELAY_MS
 	return Math.min(Math.max((elapsed - delay) / FALL_DURATION_MS, 0), 1)
 }
 
@@ -470,6 +471,8 @@ export default function BrickModel({ targetConfig, textureDebug, geometryDebug }
 	// Cascade fall animation state
 	const fallWaveStart = useRef<number | null>(null)
 	const prevFallProgress = useRef(targetConfig.fallProgress)
+	const wytheCascadeStagger = useRef(false)
+	const prevWytheCascadeTrigger = useRef(targetConfig.wytheCascadeTrigger)
 
 	useFrame(({ clock }, delta) => {
 		const dt = typeof delta === 'number' && delta > 0 ? Math.min(delta, DELTA_MAX) : 1 / 60
@@ -495,6 +498,7 @@ export default function BrickModel({ targetConfig, textureDebug, geometryDebug }
 		// --- Fall cascade rising-edge detection ---
 		if (targetConfig.fallProgress === 1 && prevFallProgress.current < 1) {
 			fallWaveStart.current = now
+			wytheCascadeStagger.current = false
 		}
 		if (targetConfig.fallProgress < 1) {
 			fallWaveStart.current = null
@@ -551,6 +555,15 @@ export default function BrickModel({ targetConfig, textureDebug, geometryDebug }
 		}
 		prevSplitProgress.current = targetConfig.splitProgress
 
+		// --- Wythe cascade rising-edge detection ---
+		// Fires AFTER collapse/split snaps so bricks are at their defs before the cascade
+		// overrides y to FALL_HEIGHT above; back wythe (z ≥ 0) falls first, front wythe delayed.
+		if (targetConfig.wytheCascadeTrigger && !prevWytheCascadeTrigger.current) {
+			fallWaveStart.current = now
+			wytheCascadeStagger.current = true
+		}
+		prevWytheCascadeTrigger.current = targetConfig.wytheCascadeTrigger
+
 		// --- Header darkening wave ---
 		if (targetConfig.headerDarkenProgress > 0 && prevHeaderDarkenProgress.current === 0) {
 			headerWaveStart.current = now
@@ -597,7 +610,8 @@ export default function BrickModel({ targetConfig, textureDebug, geometryDebug }
 			(targetConfig.rows - 1) * ROW_DELAY_MS +
 			(targetConfig.cols - 1) * COL_DELAY_MS +
 			FALL_DURATION_MS +
-			FALL_BUFFER_MS
+			FALL_BUFFER_MS +
+			(wytheCascadeStagger.current ? WYTHE_STAGGER_MS : 0)
 		if (fallWaveStart.current !== null && now - fallWaveStart.current > totalCascadeDur) {
 			fallWaveStart.current = null
 		}
@@ -624,7 +638,9 @@ export default function BrickModel({ targetConfig, textureDebug, geometryDebug }
 
 			if (target && fallWaveStart.current !== null) {
 				const elapsed = now - fallWaveStart.current
-				const progress = cascadeProgress(elapsed, row, col)
+				const isFrontWythe = target.z < 0
+				const extraDelay = wytheCascadeStagger.current && isFrontWythe ? WYTHE_STAGGER_MS : 0
+				const progress = cascadeProgress(elapsed, row, col, extraDelay)
 				ty = target.y + (1 - easeIn(progress)) * FALL_HEIGHT
 				directY = true
 			} else {

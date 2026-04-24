@@ -17,6 +17,7 @@ export interface SceneState {
 	collapseProgress: number // 0 = standing, 1 = bricks scattered (collapsed)
 	splitProgress: number // 0 = wythes together, 1 = front/back wythes split apart
 	headerDarkenProgress: number // 0 = all headers normal, >0 = headers dark; rising edge triggers left-to-right wave
+	wytheCascadeTrigger: boolean // rising edge: bricks fall in with back wythe first, front wythe staggered
 }
 
 export interface Moment {
@@ -38,6 +39,7 @@ const BASE = {
 	collapseProgress: 0,
 	splitProgress: 0,
 	headerDarkenProgress: 0,
+	wytheCascadeTrigger: false,
 }
 
 const S1: SceneState = { ...BASE, bondPattern: 'stretcher', numWythes: 1, rows: 5, cols: 6, wytheSeparation: 0 }
@@ -110,7 +112,7 @@ export const moments: Moment[] = [
 	{
 		isSubstep: false,
 		text: 'To make a strong brick wall, you need multiple vertical layers, called *wythes*. You might start by building 2 wythes of stretchers right next to each other.',
-		scene: S2_CLOSE,
+		scene: { ...S2_CLOSE, wytheCascadeTrigger: true },
 	},
 	{
 		isSubstep: true,
