@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CameraConfig } from '../App'
 import { TextureDebugConfig } from '../brickTextures'
 import { BrickGeometryConfig } from '../brickGeometry'
+import { WallConfig } from '../wallTexture'
 import styles from '../styles/debugMenu.module.css'
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
 	onTextureChange: (config: TextureDebugConfig) => void
 	geometryDebug: BrickGeometryConfig
 	onGeometryChange: (config: BrickGeometryConfig) => void
+	wallConfig: WallConfig
+	onWallConfigChange: (config: WallConfig) => void
 }
 
 interface SliderRowProps {
@@ -43,7 +46,7 @@ function SliderRow({ label, value, min, max, step, current, onSlide }: SliderRow
 	)
 }
 
-export default function DebugMenu({ cameraConfig, onCameraChange, textureDebug, onTextureChange, geometryDebug, onGeometryChange }: Props) {
+export default function DebugMenu({ cameraConfig, onCameraChange, textureDebug, onTextureChange, geometryDebug, onGeometryChange, wallConfig, onWallConfigChange }: Props) {
 	const [open, setOpen] = useState(false)
 	const containerRef = useRef<HTMLDivElement>(null)
 
@@ -82,7 +85,7 @@ export default function DebugMenu({ cameraConfig, onCameraChange, textureDebug, 
 						current={cameraConfig.zoom}
 						onSlide={(zoom) => onCameraChange({ ...cameraConfig, zoom })}
 					/>
-					<div className={styles.sectionLabel}>Texture</div>
+					<div className={styles.sectionLabel}>Bricks</div>
 					<SliderRow
 						label="Bump depth"
 						value={textureDebug.noiseStrength.toFixed(1)}
@@ -110,7 +113,6 @@ export default function DebugMenu({ cameraConfig, onCameraChange, textureDebug, 
 						current={textureDebug.pitOffset}
 						onSlide={(pitOffset) => onTextureChange({ ...textureDebug, pitOffset })}
 					/>
-					<div className={styles.sectionLabel}>Geometry</div>
 					<SliderRow
 						label="Round radius"
 						value={`${geometryDebug.radius.toFixed(1)} mm`}
@@ -119,6 +121,52 @@ export default function DebugMenu({ cameraConfig, onCameraChange, textureDebug, 
 						step={0.5}
 						current={geometryDebug.radius}
 						onSlide={(radius) => onGeometryChange({ ...geometryDebug, radius })}
+					/>
+					<div className={styles.sectionLabel}>Concrete Wall</div>
+					<SliderRow
+						label="Bump freq"
+						value={wallConfig.noiseFreq}
+						min={1}
+						max={24}
+						step={1}
+						current={wallConfig.noiseFreq}
+						onSlide={(noiseFreq) => onWallConfigChange({ ...wallConfig, noiseFreq })}
+					/>
+					<SliderRow
+						label="Bump depth"
+						value={wallConfig.noiseStrength.toFixed(1)}
+						min={0.5}
+						max={10}
+						step={0.5}
+						current={wallConfig.noiseStrength}
+						onSlide={(noiseStrength) => onWallConfigChange({ ...wallConfig, noiseStrength })}
+					/>
+					<SliderRow
+						label="Octaves"
+						value={wallConfig.octaves}
+						min={1}
+						max={5}
+						step={1}
+						current={wallConfig.octaves}
+						onSlide={(octaves) => onWallConfigChange({ ...wallConfig, octaves })}
+					/>
+					<SliderRow
+						label="Pit offset"
+						value={wallConfig.pitOffset.toFixed(2)}
+						min={0}
+						max={1.5}
+						step={0.05}
+						current={wallConfig.pitOffset}
+						onSlide={(pitOffset) => onWallConfigChange({ ...wallConfig, pitOffset })}
+					/>
+					<SliderRow
+						label="Round radius"
+						value={`${wallConfig.radius.toFixed(1)} mm`}
+						min={0}
+						max={15}
+						step={0.5}
+						current={wallConfig.radius}
+						onSlide={(radius) => onWallConfigChange({ ...wallConfig, radius })}
 					/>
 				</div>
 			)}
