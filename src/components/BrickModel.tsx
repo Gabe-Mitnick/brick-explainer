@@ -330,22 +330,22 @@ function makeMaterial(color: string | THREE.Color, normalMap: THREE.CanvasTextur
 export default function BrickModel({ targetConfig, textureDebug, geometryDebug }: Props) {
 	// useRef(expr) evaluates expr on every render even though the value is only used once.
 	// Use lazy initialization (null check) so expensive one-time work only runs on first render.
-	const textureRef = useRef<BrickTextures | null>(null)
+	const textureRef = useRef<BrickTextures>(null!)
 	if (!textureRef.current) textureRef.current = generateBrickTextures(textureDebug)
 
 	const geo = useRef<THREE.BufferGeometry | null>(null)
 	if (!geo.current) geo.current = makeBrickGeometry(BW, BH, BD, geometryDebug)
 
-	const brickMats = useRef<THREE.MeshStandardMaterial[] | null>(null)
+	const brickMats = useRef<THREE.MeshStandardMaterial[]>(null!)
 	if (!brickMats.current) {
 		brickMats.current = Array.from({ length: MAX_BRICKS }, (_, i) =>
-			makeMaterial(BASE_COLOR, textureRef.current!.maps[i]),
+			makeMaterial(BASE_COLOR, textureRef.current.maps[i]),
 		)
 	}
-	const endMats = useRef<THREE.MeshStandardMaterial[] | null>(null)
+	const endMats = useRef<THREE.MeshStandardMaterial[]>(null!)
 	if (!endMats.current) {
 		endMats.current = Array.from({ length: MAX_BRICKS }, (_, i) =>
-			makeMaterial(BASE_COLOR, textureRef.current!.maps[i]),
+			makeMaterial(BASE_COLOR, textureRef.current.maps[i]),
 		)
 	}
 	// 6-element material array for header bricks: [right(+X), left(-X), top, bottom, front(+Z), back(-Z)]
@@ -353,12 +353,12 @@ export default function BrickModel({ targetConfig, textureDebug, geometryDebug }
 	const headerMatArrays = useRef<THREE.MeshStandardMaterial[][] | null>(null)
 	if (!headerMatArrays.current) {
 		headerMatArrays.current = Array.from({ length: MAX_BRICKS }, (_, i) => [
-			endMats.current![i],
-			endMats.current![i],
-			brickMats.current![i],
-			brickMats.current![i],
-			brickMats.current![i],
-			brickMats.current![i],
+			endMats.current[i],
+			endMats.current[i],
+			brickMats.current[i],
+			brickMats.current[i],
+			brickMats.current[i],
+			brickMats.current[i],
 		])
 	}
 	const lastIsHeader = useRef<boolean[]>(Array(MAX_BRICKS).fill(false))
@@ -721,7 +721,7 @@ export default function BrickModel({ targetConfig, textureDebug, geometryDebug }
 			// Switch between single-material (stretchers) and 6-material array (headers) as needed
 			const isHeader = target !== null && Math.abs(target.rotY) > 0.1
 			if (isHeader !== lastIsHeader.current[i]) {
-				mesh.material = isHeader ? headerMatArrays.current[i] : brickMats.current[i]
+				mesh.material = isHeader ? headerMatArrays.current![i] : brickMats.current[i]
 				lastIsHeader.current[i] = isHeader
 			}
 
